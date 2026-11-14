@@ -154,6 +154,39 @@ body{background:radial-gradient(ellipse at 48% -15%,#172c3f 0%,#0b1119 48%,#080b
  .landscape-root #view .btn:not(.dashboard-play){padding:6px 9px;font-size:.72rem}
 }
 
+
+/* Ajustes solicitados a partir das capturas do celular: eliminar o vazio e separar a partida. */
+@media (max-height:620px) and (orientation:landscape){
+  .dashboard-home{grid-template-areas:"hero side" "table side" "log log";grid-template-columns:minmax(0,1.35fr) minmax(0,.8fr);grid-template-rows:auto minmax(100px,1fr) auto;align-items:start;gap:8px}
+  .dashboard-home>.dashboard-hero{align-self:start;min-height:0}
+  .dashboard-side{grid-area:side;grid-row:1 / span 2;align-self:stretch;min-height:0;grid-template-rows:auto auto;align-content:start}
+  .dashboard-table{grid-area:table;align-self:start;min-height:0;max-height:calc(100dvh - 190px);overflow:auto}
+  .dashboard-log{grid-area:log}
+  .match-screen{overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;gap:8px}
+  .match-head{flex:0 0 auto;min-height:48px}
+  .match-stage{flex:1 0 190px;min-height:190px;gap:8px}
+  .match-center{min-height:0}
+  .match-center .pitch{min-height:125px}
+  .match-bottom{display:grid;grid-template-columns:minmax(100px,.75fr) minmax(0,2.5fr) minmax(110px,.85fr);align-items:start;gap:8px;margin-top:4px;padding:8px;flex:0 0 auto}
+  .match-bottom>*{min-width:0}
+  .match-controls-left,.match-controls-right{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:7px}
+  .match-controls-center{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:7px;min-width:0}
+  .match-controls-center label{min-width:100px}
+  .match-controls-center select{max-width:145px;min-width:0}
+  .live-posture-chips,.live-instruction-control{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:4px;max-width:100%}
+  .live-instruction-control{padding:4px}
+  .match-screen .match-bottom .match-clock{min-width:0}
+  .match-summary-card:not(.hidden){max-height:18vh;overflow:auto}
+  .halftime-actions{position:relative;z-index:2;max-width:100%;margin:4px 0;gap:6px;padding:7px}
+}
+@media (max-width:700px) and (orientation:landscape){
+ .dashboard-home{grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr)}
+ .dashboard-table table{min-width:420px}
+ .match-bottom{grid-template-columns:minmax(85px,.65fr) minmax(0,2.7fr) minmax(95px,.75fr);gap:5px;padding:6px}
+ .match-controls-center label{min-width:85px}
+ .match-controls-center select{max-width:110px}
+}
+
 </style></head><body><div id="landscapeRoot" class="landscape-root"><header class="top"><div><div class="brand">⚽ GERENTE DE FUTEBOL</div><small id="topclub">Sua carreira começa aqui</small></div><div class="flex"><div id="topmeta" class="muted"></div><button id="installApp" class="btn smallbtn" type="button">📲 Instalar app</button><button id="restart" class="btn smallbtn hidden">Nova carreira</button></div></header><main class="wrap"><section id="setup" class="card setup"><h1>Comece sua carreira</h1><p>Escolha um clube da Série A 2026 e assuma o comando.</p><label>Clube<br><select id="pickclub"></select></label><div id="clubBadge" style="margin:12px 0"></div><p class="muted">Elencos reais da Série A de 2026 (incluindo reservas) conforme registro público da ESPN, consultado em 13/11/2026. Podem incluir reservas e jovens, não acompanham transferências automaticamente. Atributos e negociações são simulados.</p><button id="start" class="btn primary">Assumir o time</button></section><section id="app" class="hidden"><div id="summary" class="grid"></div><nav class="nav" id="nav"></nav><section id="view"></section></section></main><div id="toast" class="toast hidden"></div></div><script>
 (()=>{'use strict';
 let clubs=['Flamengo','Palmeiras','Cruzeiro','Mirassol','Fluminense','Bahia','Botafogo','São Paulo','Red Bull Bragantino','Corinthians','Grêmio','Vasco','Atlético-MG','Santos','Vitória','Internacional','Coritiba','Athletico-PR','Chapecoense','Remo'];
