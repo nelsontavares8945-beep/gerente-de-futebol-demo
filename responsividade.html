@@ -118,6 +118,19 @@ body{background:radial-gradient(ellipse at 48% -15%,#172c3f 0%,#0b1119 48%,#080b
   .office-screen{overflow:auto}
 }
 
+
+/* Mantém os comandos de treino abaixo das colunas em telas baixas. */
+@media (max-height:500px) and (orientation:landscape){
+  .training-screen{overflow:hidden}
+  .training-stage{min-height:0;flex:1 1 0}
+  .training-center{min-height:0;overflow:auto}
+  .training-footer{flex:0 0 auto;flex-wrap:wrap}
+}
+@media (orientation:portrait){
+  .training-stage{min-height:0;flex:1 1 0}
+  .training-center{min-height:0;overflow:auto}
+  .training-footer{flex:0 0 auto;flex-wrap:wrap}
+}
 </style></head><body><div id="landscapeRoot" class="landscape-root"><header class="top"><div><div class="brand">⚽ GERENTE DE FUTEBOL</div><small id="topclub">Sua carreira começa aqui</small></div><div class="flex"><div id="topmeta" class="muted"></div><button id="installApp" class="btn smallbtn" type="button">📲 Instalar app</button><button id="restart" class="btn smallbtn hidden">Nova carreira</button></div></header><main class="wrap"><section id="setup" class="card setup"><h1>Comece sua carreira</h1><p>Escolha um clube da Série A 2026 e assuma o comando.</p><label>Clube<br><select id="pickclub"></select></label><div id="clubBadge" style="margin:12px 0"></div><p class="muted">Elencos reais da Série A de 2026 (incluindo reservas) conforme registro público da ESPN, consultado em 13/11/2026. Podem incluir reservas e jovens, não acompanham transferências automaticamente. Atributos e negociações são simulados.</p><button id="start" class="btn primary">Assumir o time</button></section><section id="app" class="hidden"><div id="summary" class="grid"></div><nav class="nav" id="nav"></nav><section id="view"></section></section></main><div id="toast" class="toast hidden"></div></div><script>
 (()=>{'use strict';
 let clubs=['Flamengo','Palmeiras','Cruzeiro','Mirassol','Fluminense','Bahia','Botafogo','São Paulo','Red Bull Bragantino','Corinthians','Grêmio','Vasco','Atlético-MG','Santos','Vitória','Internacional','Coritiba','Athletico-PR','Chapecoense','Remo'];
