@@ -193,6 +193,56 @@ body{background:radial-gradient(ellipse at 48% -15%,#172c3f 0%,#0b1119 48%,#080b
  .match-player-token b{max-width:58px;overflow:hidden;text-overflow:ellipsis;font-size:clamp(.38rem,.75vw,.55rem);padding:1px 2px}
 }
 
+
+/* Distribui a visão geral: cartões da lateral em grade, tabela logo abaixo e sem área morta. */
+@media (max-height:700px) and (orientation:landscape){
+ .dashboard-home{grid-template-areas:"hero side" "table side" "log log";grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);grid-template-rows:auto minmax(120px,1fr) auto;align-items:stretch;gap:7px}
+ .dashboard-side{grid-area:side;grid-row:1 / span 2;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));align-content:stretch;align-items:stretch;gap:6px;min-height:0;overflow:auto}
+ .dashboard-side>.card{min-width:0;min-height:0;height:100%;overflow:auto;margin:0;padding:7px}
+ .dashboard-side>.card h2{font-size:.67rem;line-height:1.15}
+ .dashboard-side p,.dashboard-side small{font-size:.61rem;line-height:1.25}
+ .dashboard-side .club-metrics{gap:3px}
+ .dashboard-side .club-metrics>div{padding:4px}
+ .dashboard-side .club-metrics small{font-size:.45rem}
+ .dashboard-side .club-metrics b{font-size:.75rem}
+ .dashboard-side .btn{padding:4px 6px;font-size:.57rem}
+ .dashboard-table{min-height:0;max-height:calc(100dvh - 185px);overflow:auto}
+ .dashboard-table table{min-width:0}
+ .dashboard-table table td,.dashboard-table table th{padding:3px 4px;font-size:.58rem}
+ .dashboard-log{min-height:0}
+}
+/* Aviso de gol em uma faixa própria: não sobrepõe o campo, placar ou comandos. */
+@media (max-height:700px) and (orientation:landscape){
+ .match-screen{overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;gap:6px}
+ .match-head{flex:0 0 auto;min-height:45px}
+ .match-goal-banner{position:relative;inset:auto;left:auto;top:auto;z-index:8;display:flex;justify-content:center;flex:0 0 auto;width:100%;height:0;overflow:hidden;opacity:0;transform:none;margin:0;pointer-events:none;transition:opacity .15s ease,height .15s ease,margin .15s ease}
+ .match-goal-banner.show{height:auto;overflow:visible;opacity:1;transform:none;margin:2px 0}
+ .match-goal-card{grid-template-columns:auto minmax(0,1fr);width:min(100%,440px);min-width:0;padding:5px 9px;gap:1px 7px;text-align:left}
+ .match-goal-card>b{font-size:1rem}
+ .match-goal-card>strong{font-size:.8rem}
+ .match-goal-card>span,.match-goal-card>small{font-size:.62rem}
+ .match-stage{flex:1 0 185px;min-height:185px;overflow:hidden;gap:6px}
+ .match-event-panel,.match-data-panel{min-width:0;overflow:hidden;padding:6px}
+ .match-center{min-width:0;min-height:0;overflow:hidden;gap:3px}
+ .match-center .pitch{min-height:0;flex:1 1 0}
+ .match-player-strip{min-height:0;max-height:25px;overflow:auto}
+ .match-screen .match-live{min-height:24px;font-size:.61rem;padding:3px 6px}
+ .goal-feed{width:100%;min-width:0;max-width:100%;min-height:0;max-height:26px;overflow-x:auto;overflow-y:hidden;flex:0 0 auto;white-space:nowrap}
+ .goal-chip{max-width:95%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:3px 6px;font-size:.55rem}
+ .match-bottom{display:grid;grid-template-columns:minmax(74px,.65fr) minmax(0,2.6fr) minmax(80px,.7fr);align-items:center;gap:5px;margin-top:0;padding:6px;flex:0 0 auto}
+ .match-bottom>*{min-width:0;max-width:100%}
+ .match-controls-left,.match-controls-center,.match-controls-right{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:4px;min-width:0;max-width:100%}
+ .match-controls-center label{min-width:76px;font-size:.44rem}
+ .match-controls-center select{width:100%;max-width:118px;min-width:0;padding:4px;font-size:.57rem}
+ .match-screen .match-control{max-width:100%;white-space:normal;padding:5px 6px!important;font-size:.55rem!important}
+ .speed-btn{min-width:30px;padding:3px;font-size:.55rem}
+ .live-posture-chips,.live-instruction-control{display:flex;justify-content:center;flex-wrap:wrap;gap:3px;max-width:100%}
+ .live-posture-chip,.live-instruction-chip{padding:3px 5px;font-size:.48rem}
+ .live-instruction-control>small,.live-tactic-tag{display:none}
+ .match-controls-left #matchPause{min-width:0}
+ .match-summary-card:not(.hidden){max-height:15vh;overflow:auto}
+}
+
 </style></head><body><div id="landscapeRoot" class="landscape-root"><header class="top"><div><div class="brand">⚽ GERENTE DE FUTEBOL</div><small id="topclub">Sua carreira começa aqui</small></div><div class="flex"><div id="topmeta" class="muted"></div><button id="installApp" class="btn smallbtn" type="button">📲 Instalar app</button><button id="restart" class="btn smallbtn hidden">Nova carreira</button></div></header><main class="wrap"><section id="setup" class="card setup"><h1>Comece sua carreira</h1><p>Escolha um clube da Série A 2026 e assuma o comando.</p><label>Clube<br><select id="pickclub"></select></label><div id="clubBadge" style="margin:12px 0"></div><p class="muted">Elencos reais da Série A de 2026 (incluindo reservas) conforme registro público da ESPN, consultado em 13/11/2026. Podem incluir reservas e jovens, não acompanham transferências automaticamente. Atributos e negociações são simulados.</p><button id="start" class="btn primary">Assumir o time</button></section><section id="app" class="hidden"><div id="summary" class="grid"></div><nav class="nav" id="nav"></nav><section id="view"></section></section></main><div id="toast" class="toast hidden"></div></div><script>
 (()=>{'use strict';
 let clubs=['Flamengo','Palmeiras','Cruzeiro','Mirassol','Fluminense','Bahia','Botafogo','São Paulo','Red Bull Bragantino','Corinthians','Grêmio','Vasco','Atlético-MG','Santos','Vitória','Internacional','Coritiba','Athletico-PR','Chapecoense','Remo'];
