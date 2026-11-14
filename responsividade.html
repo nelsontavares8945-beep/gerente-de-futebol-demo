@@ -194,22 +194,25 @@ body{background:radial-gradient(ellipse at 48% -15%,#172c3f 0%,#0b1119 48%,#080b
 }
 
 
-/* Distribui a visão geral: cartões da lateral em grade, tabela logo abaixo e sem área morta. */
-@media (max-height:700px) and (orientation:landscape){
- .dashboard-home{grid-template-areas:"hero side" "table side" "log log";grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);grid-template-rows:auto minmax(120px,1fr) auto;align-items:stretch;gap:7px}
- .dashboard-side{grid-area:side;grid-row:1 / span 2;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));align-content:stretch;align-items:stretch;gap:6px;min-height:0;overflow:auto}
- .dashboard-side>.card{min-width:0;min-height:0;height:100%;overflow:auto;margin:0;padding:7px}
- .dashboard-side>.card h2{font-size:.67rem;line-height:1.15}
- .dashboard-side p,.dashboard-side small{font-size:.61rem;line-height:1.25}
- .dashboard-side .club-metrics{gap:3px}
- .dashboard-side .club-metrics>div{padding:4px}
- .dashboard-side .club-metrics small{font-size:.45rem}
- .dashboard-side .club-metrics b{font-size:.75rem}
- .dashboard-side .btn{padding:4px 6px;font-size:.57rem}
- .dashboard-table{min-height:0;max-height:calc(100dvh - 185px);overflow:auto}
- .dashboard-table table{min-width:0}
- .dashboard-table table td,.dashboard-table table th{padding:3px 4px;font-size:.58rem}
- .dashboard-log{min-height:0}
+/* Visão geral: duas colunas independentes, sem cartões forçados a alturas iguais. */
+@media (max-height:700px) and (orientation:landscape), (max-width:700px) and (orientation:portrait){
+ .dashboard-home{display:block;columns:2;column-gap:10px;column-fill:balance;min-width:0}
+ .dashboard-side{display:contents}
+ .dashboard-home>.card,.dashboard-side>.card{display:inline-block;vertical-align:top;width:100%;height:auto;min-height:0;max-height:none;box-sizing:border-box;break-inside:avoid;page-break-inside:avoid;overflow:visible;margin:0 0 10px;padding:10px}
+ .dashboard-home>.dashboard-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(90px,.6fr);gap:8px;min-height:0;height:auto;overflow:hidden}
+ .dashboard-home .dashboard-pitch-art{min-height:140px}
+ .dashboard-side>.card h2,.dashboard-table h2,.dashboard-log h2{font-size:.84rem;line-height:1.25}
+ .dashboard-side p,.dashboard-side small{font-size:inherit;line-height:1.35}
+ .dashboard-side .club-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+ .dashboard-side .club-metrics>div{padding:7px}
+ .dashboard-side .club-metrics small{font-size:.59rem}
+ .dashboard-side .club-metrics b{font-size:1rem}
+ .dashboard-side .btn{font-size:.72rem;padding:6px 8px}
+ .dashboard-home .dashboard-table{overflow:hidden}
+ .dashboard-home .dashboard-table .scroll{max-height:230px;overflow:auto}
+ .dashboard-home .dashboard-table table{min-width:0;width:100%}
+ .dashboard-home .dashboard-table table td,.dashboard-home .dashboard-table table th{padding:5px 3px;font-size:.7rem}
+ .dashboard-home .dashboard-log .log{max-height:none;overflow:visible;line-height:1.4}
 }
 /* Aviso de gol em uma faixa própria: não sobrepõe o campo, placar ou comandos. */
 @media (max-height:700px) and (orientation:landscape){
