@@ -131,6 +131,29 @@ body{background:radial-gradient(ellipse at 48% -15%,#172c3f 0%,#0b1119 48%,#080b
   .training-center{min-height:0;overflow:auto}
   .training-footer{flex:0 0 auto;flex-wrap:wrap}
 }
+/* Escala compacta para o card da visão geral e controles em telas horizontais baixas. */
+@media (max-height: 500px) and (orientation:landscape){
+ .top{padding:5px 12px;gap:6px}.top .brand{font-size:.85rem}.top small,.top #topmeta{font-size:.68rem}
+ .top .btn{padding:5px 8px;font-size:.68rem}
+ .landscape-root .wrap{padding:7px 10px}
+ .landscape-root .grid{gap:5px}.landscape-root .grid>.card{padding:6px 9px;margin-bottom:5px}
+ .landscape-root .grid .stat{font-size:.92rem;margin:2px 0}.landscape-root .grid small{font-size:.64rem}
+ .landscape-root .nav{gap:5px;padding:4px 0 7px}
+ .landscape-root .nav button{padding:6px 9px;font-size:.7rem}
+ .dashboard-home{align-items:start;gap:8px;grid-template-columns:minmax(0,1.35fr) minmax(170px,.8fr)}
+ .dashboard-home>.dashboard-hero{align-self:start;min-height:0;grid-template-columns:minmax(0,1fr) minmax(90px,.62fr);padding:10px;gap:8px}
+ .dashboard-hero h1{font-size:1.15rem;margin:4px 0;line-height:1.1}
+ .dashboard-subtitle{font-size:.67rem;line-height:1.3;margin:0 0 4px}
+ .eyebrow,.fixture-label{font-size:.53rem}.fixture-label{margin:3px 0 4px}
+ .fixture-teams{gap:5px;margin-bottom:6px}.fixture-teams>div{gap:4px;font-size:.65rem}.fixture-teams img{width:26px;height:26px}
+ .dashboard-play{padding:7px 10px;font-size:.7rem;letter-spacing:.03em;max-width:100%;white-space:normal}
+ .dashboard-pitch-art{min-height:125px;max-height:165px}
+ .dashboard-side>.card{padding:8px;margin-bottom:7px}.dashboard-side h2{font-size:.7rem}
+ .club-metrics{gap:4px}.club-metrics>div{padding:5px}.club-metrics small{font-size:.5rem}.club-metrics b{font-size:.82rem}
+ .landscape-root #view select,.landscape-root #view input{max-width:100%;min-width:0;padding:6px 8px;font-size:.75rem}
+ .landscape-root #view .btn:not(.dashboard-play){padding:6px 9px;font-size:.72rem}
+}
+
 </style></head><body><div id="landscapeRoot" class="landscape-root"><header class="top"><div><div class="brand">⚽ GERENTE DE FUTEBOL</div><small id="topclub">Sua carreira começa aqui</small></div><div class="flex"><div id="topmeta" class="muted"></div><button id="installApp" class="btn smallbtn" type="button">📲 Instalar app</button><button id="restart" class="btn smallbtn hidden">Nova carreira</button></div></header><main class="wrap"><section id="setup" class="card setup"><h1>Comece sua carreira</h1><p>Escolha um clube da Série A 2026 e assuma o comando.</p><label>Clube<br><select id="pickclub"></select></label><div id="clubBadge" style="margin:12px 0"></div><p class="muted">Elencos reais da Série A de 2026 (incluindo reservas) conforme registro público da ESPN, consultado em 13/11/2026. Podem incluir reservas e jovens, não acompanham transferências automaticamente. Atributos e negociações são simulados.</p><button id="start" class="btn primary">Assumir o time</button></section><section id="app" class="hidden"><div id="summary" class="grid"></div><nav class="nav" id="nav"></nav><section id="view"></section></section></main><div id="toast" class="toast hidden"></div></div><script>
 (()=>{'use strict';
 let clubs=['Flamengo','Palmeiras','Cruzeiro','Mirassol','Fluminense','Bahia','Botafogo','São Paulo','Red Bull Bragantino','Corinthians','Grêmio','Vasco','Atlético-MG','Santos','Vitória','Internacional','Coritiba','Athletico-PR','Chapecoense','Remo'];
