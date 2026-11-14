@@ -268,6 +268,41 @@ body{background:radial-gradient(ellipse at 48% -15%,#172c3f 0%,#0b1119 48%,#080b
 .menu-scrim.open{opacity:1;visibility:visible}
 @media(prefers-reduced-motion:reduce){#nav,.menu-scrim{transition:none}}
 
+
+/* Treino em paisagem curta: campo com altura controlada e cada coluna rolável sem colisões. */
+@media (max-height:560px) and (orientation:landscape){
+ .training-screen{position:fixed;inset:0;width:100vw;height:100dvh;max-height:100dvh;box-sizing:border-box;padding:6px;gap:5px;overflow:hidden;display:flex;flex-direction:column}
+ .training-head{flex:0 0 auto;min-height:34px;padding:1px 4px 4px;gap:8px}
+ .training-head h2{font-size:1rem}
+ .training-head small{font-size:.68rem;line-height:1.2}
+ .training-stage{flex:1 1 0;min-height:0;grid-template-columns:minmax(0,25fr) minmax(0,48fr) minmax(0,27fr);gap:6px;align-items:stretch;overflow:hidden}
+ .training-stage>.training-side{min-width:0;min-height:0;height:100%;box-sizing:border-box;overflow-x:hidden;overflow-y:auto;padding:6px}
+ .training-side h3{position:sticky;top:0;z-index:2;padding:4px 2px;background:#14271c;font-size:.76rem;line-height:1.2}
+ .training-player{grid-template-columns:minmax(0,1fr) 64px;gap:4px;padding:4px 1px}
+ .training-player span{font-size:.65rem}
+ .training-player select{width:64px;font-size:.62rem;padding:4px}
+ .training-center{min-width:0;min-height:0;height:100%;box-sizing:border-box;justify-content:flex-start;align-items:stretch;overflow:hidden;padding:0 2px;gap:4px}
+ .training-center .pitch{flex:0 0 auto;width:100%;height:clamp(108px,23dvh,128px);min-height:108px;max-height:128px;aspect-ratio:auto}
+ .training-controls{flex:1 1 auto;min-height:0;display:grid;grid-template-rows:repeat(4,minmax(24px,auto)) auto;gap:2px;padding:4px;overflow:auto}
+ .training-controls .control-row{display:grid;grid-template-columns:65px minmax(0,1fr);flex-wrap:nowrap;align-items:center;gap:3px;min-width:0}
+ .training-controls .control-row>b{flex-basis:auto;font-size:.61rem;white-space:nowrap}
+ .training-controls .choice-row{min-width:0;gap:3px;padding:1px}
+ .training-controls .choice-btn{padding:4px 6px;font-size:.57rem}
+ .training-controls .control-row:last-child{grid-template-columns:1fr;align-content:start;gap:2px}
+ .training-controls .control-row:last-child>b{display:none}
+ .training-controls .session-choice-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:3px}
+ .training-controls .session-choice{min-height:38px;padding:4px 5px;overflow:hidden}
+ .training-controls .session-choice b{font-size:.59rem}
+ .training-controls .session-choice small{font-size:.49rem;line-height:1.15;margin-top:2px}
+ .training-status{flex:0 0 auto;min-height:0;padding:6px;font-size:.72rem;line-height:1.3}
+ .training-choices{flex:0 0 auto;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+ .training-choices label{min-width:0;font-size:.64rem;line-height:1.2}
+ .training-choices select{font-size:.68rem;padding:5px;min-width:0}
+ .training-footer{flex:0 0 auto;min-height:40px;box-sizing:border-box;padding:4px 2px 0;gap:6px}
+ .training-footer .btn{padding:6px 9px;font-size:.68rem;white-space:normal}
+ .training-center .card,.training-center [class*="focus"],.training-center [class*="training-"]{max-width:100%;box-sizing:border-box}
+}
+
 </style></head><body><div id="landscapeRoot" class="landscape-root"><header class="top"><button type="button" id="menuToggle" class="menu-trigger hidden" aria-label="Abrir menu" aria-expanded="false">☰</button><div><div class="brand">⚽ GERENTE DE FUTEBOL</div><small id="topclub">Sua carreira começa aqui</small></div><div class="flex"><div id="topmeta" class="muted"></div><button id="installApp" class="btn smallbtn" type="button">📲 Instalar app</button><button id="restart" class="btn smallbtn hidden">Nova carreira</button></div></header><main class="wrap"><section id="setup" class="card setup"><h1>Comece sua carreira</h1><p>Escolha um clube da Série A 2026 e assuma o comando.</p><label>Clube<br><select id="pickclub"></select></label><div id="clubBadge" style="margin:12px 0"></div><p class="muted">Elencos reais da Série A de 2026 (incluindo reservas) conforme registro público da ESPN, consultado em 13/11/2026. Podem incluir reservas e jovens, não acompanham transferências automaticamente. Atributos e negociações são simulados.</p><button id="start" class="btn primary">Assumir o time</button></section><section id="app" class="hidden"><div id="summary" class="grid"></div><nav class="nav" id="nav"></nav><section id="view"></section></section></main><button type="button" id="menuScrim" class="menu-scrim" aria-label="Fechar menu"></button><div id="toast" class="toast hidden"></div></div><script>
 (()=>{'use strict';
 let clubs=['Flamengo','Palmeiras','Cruzeiro','Mirassol','Fluminense','Bahia','Botafogo','São Paulo','Red Bull Bragantino','Corinthians','Grêmio','Vasco','Atlético-MG','Santos','Vitória','Internacional','Coritiba','Athletico-PR','Chapecoense','Remo'];
