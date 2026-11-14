@@ -435,6 +435,32 @@ body{background:radial-gradient(ellipse at 48% -15%,#172c3f 0%,#0b1119 48%,#080b
 .stadium-preview>div:first-child{height:185px}.stadium-preview .stadium-evolution{min-height:0;height:100%}.stadium-preview .stadium-image-zone{min-height:0}.stadium-preview .evolution-banner{padding:3px 6px;font-size:.53rem}.stadium-preview .evolution-levels{padding:3px}
 @media(max-height:560px) and (orientation:landscape){.facilities-panel{max-height:96dvh;overflow-y:auto}.stadium-hero{min-height:190px}.stadium-evolution{min-height:190px}.stadium-image-zone{min-height:125px}.evolution-banner{font-size:.56rem;padding:4px 7px}.evolution-level b{font-size:.43rem}}
 
+
+@media(max-height:560px) and (orientation:landscape){
+ .facilities-overlay{padding:4px}
+ .facilities-panel{width:98%;max-height:98dvh;padding:6px;overflow-y:auto}
+ .facilities-header{margin-bottom:5px}
+ .facilities-header h2{font-size:.95rem;margin:0}
+ .facilities-header small{font-size:.55rem}
+ .facilities-header .btn{font-size:.6rem;padding:5px 7px}
+ .facilities-layout{grid-template-columns:minmax(0,22fr) minmax(0,56fr) minmax(0,22fr);gap:5px}
+ .facilities-side{gap:5px}
+ .facility-upgrade{gap:3px;padding:6px}
+ .facility-icon{font-size:.85rem;line-height:1}
+ .facility-upgrade b{font-size:.62rem;line-height:1.15}
+ .facility-upgrade span,.facility-upgrade small{font-size:.54rem;line-height:1.2}
+ .facility-upgrade .btn{font-size:.54rem;padding:5px}
+ .stadium-center{gap:4px}
+ .stadium-hero{height:178px;min-height:178px;flex:0 0 178px}
+ .stadium-hero .stadium-evolution{height:100%;min-height:0}
+ .stadium-hero .stadium-image-zone{min-height:0}
+ .stadium-hero .stadium-evolution-art{height:100%;width:100%}
+ .stadium-facts{font-size:.53rem;gap:3px}
+ .ticket-tools{font-size:.55rem;padding:4px;gap:5px}
+ .ticket-tools .btn{font-size:.55rem;padding:4px 6px}
+ .stadium-center>small{font-size:.49rem;line-height:1.15}
+}
+
 </style></head><body><div id="landscapeRoot" class="landscape-root"><header class="top"><button type="button" id="menuToggle" class="menu-trigger hidden" aria-label="Abrir menu" aria-expanded="false">☰</button><div><div class="brand">⚽ GERENTE DE FUTEBOL</div><small id="topclub">Sua carreira começa aqui</small></div><div class="flex"><div id="topmeta" class="muted"></div><button id="installApp" class="btn smallbtn" type="button">📲 Instalar app</button><button id="restart" class="btn smallbtn hidden">Nova carreira</button></div></header><main class="wrap"><section id="setup" class="card setup"><h1>Comece sua carreira</h1><p>Escolha um clube da Série A 2026 e assuma o comando.</p><label>Clube<br><select id="pickclub"></select></label><div id="clubBadge" style="margin:12px 0"></div><p class="muted">Elencos reais da Série A de 2026 (incluindo reservas) conforme registro público da ESPN, consultado em 13/11/2026. Podem incluir reservas e jovens, não acompanham transferências automaticamente. Atributos e negociações são simulados.</p><button id="start" class="btn primary">Assumir o time</button></section><section id="app" class="hidden"><div id="summary" class="grid"></div><nav class="nav" id="nav"></nav><section id="view"></section></section></main><button type="button" id="menuScrim" class="menu-scrim" aria-label="Fechar menu"></button><div id="toast" class="toast hidden"></div></div><script>
 (()=>{'use strict';
 let clubs=['Flamengo','Palmeiras','Cruzeiro','Mirassol','Fluminense','Bahia','Botafogo','São Paulo','Red Bull Bragantino','Corinthians','Grêmio','Vasco','Atlético-MG','Santos','Vitória','Internacional','Coritiba','Athletico-PR','Chapecoense','Remo'];
