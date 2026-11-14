@@ -40,7 +40,7 @@ jobs:
           android {
             namespace 'br.com.gerentefutebol'
             compileSdk 35
-            defaultConfig { applicationId 'br.com.gerentefutebol'; minSdk 23; targetSdk 28; versionCode 7; versionName '1.5.1' }
+            defaultConfig { applicationId 'br.com.gerentefutebol'; minSdk 23; targetSdk 28; versionCode 8; versionName '1.6' }
           }
           GRADLE
           cat > android/app/src/main/AndroidManifest.xml <<'MANIFEST'
@@ -99,8 +99,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           cp android/app/build/outputs/apk/debug/app-debug.apk Gerente-de-Futebol.apk
-          gh release create android-v7 Gerente-de-Futebol.apk --target "$GITHUB_SHA" --title 'Gerente de Futebol Android 1.5.1' --notes 'Melhorias visuais e de gestão em Treino, Táticas, Calendário, Competições, Mercado, Patrocínios e Centro do clube. App horizontal.' --latest
+          gh release create android-v8 Gerente-de-Futebol.apk --target "$GITHUB_SHA" --title 'Gerente de Futebol Android 1.6' --notes 'Treino com efeitos táticos no próximo jogo, pressão e responsabilidades com impacto simulado, relatório de partida com destaques. App horizontal.' --latest
       - uses: actions/upload-artifact@v4
         with:
-          name: Gerente-de-Futebol-APK-v1.5.1
+          name: Gerente-de-Futebol-APK-v1.6
           path: android/app/build/outputs/apk/debug/app-debug.apk
