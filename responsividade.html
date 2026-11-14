@@ -380,6 +380,44 @@ body{background:radial-gradient(ellipse at 48% -15%,#172c3f 0%,#0b1119 48%,#080b
  .training-footer{height:42px;min-height:42px;box-sizing:border-box}
 }
 
+
+/* Escritório em telas horizontais baixas: manter proposta, conversa e retrato visíveis. */
+@media(max-height:560px) and (orientation:landscape){
+ .office-premium .office-header-icon{width:32px;height:32px;font-size:1.05rem;border-radius:8px}
+ .office-premium .office-heading h2{font-size:.85rem;margin:1px 0}
+ .office-premium .office-kicker{font-size:.49rem}
+ .office-premium .office-status{padding:4px 7px;font-size:.52rem}
+ .office-premium .office-close{padding:5px 8px!important;font-size:.68rem}
+ .office-premium .office-club-crest{width:32px;height:32px;top:6px;left:6px;transform:none}
+ .office-premium .office-club-crest img{width:24px!important;height:24px!important}
+ .office-premium .office-person-info{padding:5px 7px;gap:1px}
+ .office-premium .office-person-role{font-size:.48rem}
+ .office-premium .office-person-info b{font-size:.68rem}
+ .office-premium .office-person-info small{font-size:.52rem}
+ .office-premium .office-player-card{padding:4px 7px;gap:6px}
+ .office-premium .office-player-card>.office-player-photo img,.office-premium .office-player-card>.office-player-photo .player-avatar{width:33px!important;height:33px!important}
+ .office-premium .office-player-info h3{font-size:.76rem;margin:1px 0}
+ .office-premium .office-player-info span{font-size:.6rem!important}
+ .office-premium .office-player-info small,.office-premium .office-asking small,.office-premium .office-rating small{font-size:.48rem}
+ .office-premium .office-rating b,.office-premium .office-asking b{font-size:.88rem}
+ .office-premium .office-conversation-head{padding:4px 1px 3px}
+ .office-premium .office-conversation-head b{font-size:.72rem}
+ .office-premium .office-chat{min-height:70px;flex:1 1 85px}
+ .office-premium .offer-sheet{margin-top:4px;padding:5px 7px}
+ .office-premium .offer-sheet-head{margin-bottom:3px}
+ .office-premium .offer-sheet-head>div small{font-size:.5rem}
+ .office-premium .offer-sheet-head>div b{font-size:.62rem}
+ .office-premium .offer-budget{font-size:.6rem}
+ .office-premium .office-offer-fields{gap:6px;flex-wrap:nowrap;align-items:end}
+ .office-premium .office-offer-fields label{min-width:0;font-size:.61rem;gap:2px}
+ .office-premium .office-offer-fields .field-sub{font-size:.5rem;line-height:1.1}
+ .office-premium .office-offer-fields input{height:27px;box-sizing:border-box;padding:3px 5px;font-size:.68rem}
+ .office-premium .office-offer-fields .btn{flex:0 0 auto;padding:6px 8px!important;font-size:.62rem}
+ .office-premium .offer-shortcuts{margin-top:3px;font-size:.52rem;gap:4px}
+ .office-premium .offer-preset{font-size:.52rem;padding:3px 5px}
+ .office-premium .office-disclaimer{font-size:.49rem;line-height:1.15;padding-top:3px}
+}
+
 </style></head><body><div id="landscapeRoot" class="landscape-root"><header class="top"><button type="button" id="menuToggle" class="menu-trigger hidden" aria-label="Abrir menu" aria-expanded="false">☰</button><div><div class="brand">⚽ GERENTE DE FUTEBOL</div><small id="topclub">Sua carreira começa aqui</small></div><div class="flex"><div id="topmeta" class="muted"></div><button id="installApp" class="btn smallbtn" type="button">📲 Instalar app</button><button id="restart" class="btn smallbtn hidden">Nova carreira</button></div></header><main class="wrap"><section id="setup" class="card setup"><h1>Comece sua carreira</h1><p>Escolha um clube da Série A 2026 e assuma o comando.</p><label>Clube<br><select id="pickclub"></select></label><div id="clubBadge" style="margin:12px 0"></div><p class="muted">Elencos reais da Série A de 2026 (incluindo reservas) conforme registro público da ESPN, consultado em 13/11/2026. Podem incluir reservas e jovens, não acompanham transferências automaticamente. Atributos e negociações são simulados.</p><button id="start" class="btn primary">Assumir o time</button></section><section id="app" class="hidden"><div id="summary" class="grid"></div><nav class="nav" id="nav"></nav><section id="view"></section></section></main><button type="button" id="menuScrim" class="menu-scrim" aria-label="Fechar menu"></button><div id="toast" class="toast hidden"></div></div><script>
 (()=>{'use strict';
 let clubs=['Flamengo','Palmeiras','Cruzeiro','Mirassol','Fluminense','Bahia','Botafogo','São Paulo','Red Bull Bragantino','Corinthians','Grêmio','Vasco','Atlético-MG','Santos','Vitória','Internacional','Coritiba','Athletico-PR','Chapecoense','Remo'];
