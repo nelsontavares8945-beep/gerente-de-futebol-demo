@@ -22,7 +22,7 @@ jobs:
       - name: Generate Android app
         shell: bash
         run: |
-          set -euo pipefail
+          set -eu
           mkdir -p android/app/src/main/java/br/com/gerentefutebol/gpulocktest android/app/src/main/assets android/app/src/main/res/drawable
           cp mestre11-cadeado.html android/app/src/main/assets/mestre11-cadeado.html
           cp icon-192.png android/app/src/main/res/drawable/icon.png
@@ -60,7 +60,7 @@ jobs:
       - name: Verify application ID and Android Debug signature
         shell: bash
         run: |
-          set -euo pipefail
+          set -eu
           APK=android/app/build/outputs/apk/debug/app-debug.apk
           test -s "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "package: name='br.com.gerentefutebol.gpulocktest' versionCode='5'"
@@ -73,7 +73,7 @@ jobs:
           arch: x86_64
           profile: pixel_2
           script: |
-            set -euo pipefail
+            set -e
             APK=android/app/build/outputs/apk/debug/app-debug.apk
             adb install "$APK"
             adb shell monkey -p br.com.gerentefutebol.gpulocktest 1
