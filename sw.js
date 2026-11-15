@@ -1,4 +1,4 @@
-const CACHE='gerente-futebol-app-v1';
+const CACHE='mestre11-web-teste-v1';
 const BASE='/gerente-de-futebol-demo/';
 const SHELL=[BASE,BASE+'index.html',BASE+'manifest.webmanifest',BASE+'icon-192.png',BASE+'icon-512.png',BASE+'icon-512-maskable.png'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting()))});
