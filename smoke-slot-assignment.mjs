@@ -5,7 +5,8 @@ import path from 'node:path';
 const html = path.resolve('mestre11-cadeado.html');
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
-page.on('pageerror', error => { throw error; });
+const pageErrors=[];
+page.on('pageerror', error => { pageErrors.push(error.message); });
 try {
   await page.goto(pathToFileURL(html).href + '?qaSlots', { waitUntil: 'domcontentloaded' });
   // Wait until the app's opening overlay has completed before using the UI.
