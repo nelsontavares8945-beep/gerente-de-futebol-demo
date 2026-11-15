@@ -14,7 +14,53 @@ on:
 name: GDF Android TEST APK (artifact only)
 run-name: TEST APK from ${{ github.ref_name }}
 on:
+name: GDF Android TEST APK (artifact only)
+run-name: TEST APK from ${{ github.ref_name }}
+on:
   workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Build isolated test APK
+        run: |
+          set -euo pipefail
+          mkdir -p android/app/src/main/assets android/app/src/main/res/drawable android/app/src/main/java/br/com/gerentefutebol
+          cp index.html android/app/src/main/assets/index.html
+          cp icon-192.png android/app/src/main/res/drawable/icon.png
+          printf '%s\n' "pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }" "dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }" "rootProject.name = 'Mestre11Test'" "include ':app'" > android/settings.gradle
+          printf "%s\n" "plugins { id 'com.android.application' version '8.6.1' apply false }" > android/build.gradle
+          cat > android/app/build.gradle <<'EOF'
+          plugins { id 'com.android.application' }
+          android { namespace 'br.com.gerentefutebol.testbuild'; compileSdk 35; defaultConfig { applicationId 'br.com.gerentefutebol.testbuild'; minSdk 23; targetSdk 28; versionCode 1; versionName 'test' } }
+          EOF
+          cat > android/app/src/main/AndroidManifest.xml <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android"><application android:label="Mestre 11 TESTE" android:theme="@android:style/Theme.Material.NoActionBar" android:hardwareAccelerated="true"><activity android:name=".MainActivity" android:exported="true" android:screenOrientation="landscape"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity></application></manifest>
+          EOF
+          cat > android/app/src/main/java/br/com/gerentefutebol/MainActivity.java <<'EOF'
+          package br.com.gerentefutebol;
+          import android.app.Activity; import android.os.Bundle; import android.webkit.*;
+          public class MainActivity extends Activity { public void onCreate(Bundle b){super.onCreate(b); WebView w=new WebView(this); w.getSettings().setJavaScriptEnabled(true); w.getSettings().setDomStorageEnabled(true); w.setWebViewClient(new WebViewClient(){public WebResourceResponse shouldInterceptRequest(WebView v, android.webkit.WebResourceRequest r){if(r.getUrl().toString().endsWith("index.html"))try{return new WebResourceResponse("text/html","UTF-8",getAssets().open("index.html"));}catch(Exception e){} return super.shouldInterceptRequest(v,r);}});setContentView(w);w.loadUrl("https://game.gerentefutebol.local/index.html");} }
+          EOF
+          gradle -p android --no-daemon assembleDebug
+          mkdir -p dist
+          cp android/app/build/outputs/apk/debug/app-debug.apk dist/Mestre-11-TESTE-${GITHUB_RUN_NUMBER}.apk
+          sha256sum dist/*.apk > dist/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Mestre-11-TESTE-${{ github.run_number }}
+          path: dist/*
+          if-no-files-found: error  workflow_dispatch:
 permissions:
   contents: read
 jobs:
