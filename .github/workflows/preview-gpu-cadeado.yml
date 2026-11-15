@@ -32,7 +32,7 @@ jobs:
           npm install --no-save esbuild@0.25.0
           python3 - <<'PY'
           import pathlib, re, subprocess, tempfile
-          p=pathlib.Path('mestre11-liso-layout.html')
+          p=pathlib.Path('mestre11-cadeado.html')
           html=p.read_text(encoding='utf-8')
           assert '</style>\n<style id="mestre-onze-css">' in html, 'Opening CSS must be a standalone stylesheet' 
           # Transpile inline JS for the Android 10 WebView (Chrome 75), which predates some modern syntax.
