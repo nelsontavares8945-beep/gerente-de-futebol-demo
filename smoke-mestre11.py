@@ -1,0 +1,35 @@
+import json,urllib.request,time,websocket,itertools
+pages=json.load(urllib.request.urlopen('http://localhost:9222/json'))
+page=next(p for p in pages if p.get('type')=='page' and 'game.gerentefutebol.local' in p.get('url',''))
+ws=websocket.create_connection(page['webSocketDebuggerUrl'],timeout=20,suppress_origin=True)
+seq=itertools.count(1)
+def js(expr):
+    i=next(seq);ws.send(json.dumps({'id':i,'method':'Runtime.evaluate','params':{'expression':expr,'returnByValue':True,'awaitPromise':True}}))
+    while True:
+        r=json.loads(ws.recv())
+        if r.get('id')!=i:continue
+        if r['result'].get('exceptionDetails'):raise RuntimeError(r['result']['exceptionDetails'])
+        return r['result']['result'].get('value')
+def check(expr):
+    value=js(expr);print('ASSERT',expr,'=>',value,flush=True)
+    if not value: raise AssertionError(expr)
+check("document.getElementById('moProgressLabel').textContent==='100%' && !document.getElementById('moContinue').disabled")
+check("[...document.querySelectorAll('#moOpening img')].every(i=>i.complete&&i.naturalWidth>0)")
+js("document.getElementById('moContinue').click()")
+check("document.getElementById('moSplash').hidden && !document.getElementById('moMenu').hidden")
+for panel,id in [('moSettingsModal','moSettings'),('moCreditsModal','moCredits'),('moExitModal','moExit')]:
+    js("document.getElementById('%s').click()"%id);check("!document.getElementById('%s').hidden"%panel)
+    js("document.querySelector('[data-mo-close=\"%s\"]').click()"%panel);check("document.getElementById('%s').hidden"%panel)
+js("document.getElementById('moPlay').click()")
+check("document.getElementById('moOpening').hidden && !document.getElementById('careerHome').classList.contains('hidden')")
+js("document.getElementById('createCareerBtn').click()")
+check("!document.getElementById('setup').classList.contains('hidden')")
+js("document.getElementById('cwCountryNext').click()")
+js("document.getElementById('cwDivisionNext').click()")
+check("!document.getElementById('cwClubStep').hidden")
+js("document.getElementById('start').click()")
+check("!document.getElementById('app').classList.contains('hidden') && !!document.getElementById('play')")
+js("document.getElementById('play').click()")
+check("!!document.getElementById('liveMatch')")
+print('PASS opening -> menu -> new career -> kickoff -> live match in Android WebView')
+ws.close()
