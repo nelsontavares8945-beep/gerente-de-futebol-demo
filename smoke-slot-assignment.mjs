@@ -23,7 +23,6 @@ try {
   }
   const result = await page.evaluate(() => {
     const qa = window.__slotQA, S = qa.state();
-    if (!qa || !S) throw new Error('QA bridge/state unavailable');
     const formations = ['4-3-3','4-4-2','3-4-3','3-5-2','4-2-3-1','4-1-4-1','5-3-2'];
     const formationResults = formations.map(formation => {
       qa.formation(formation);
@@ -35,10 +34,13 @@ try {
     qa.formation('4-3-3'); S.slotAssignments = {}; qa.ensure();
     let slots = qa.schema(), before = {...S.slotAssignments};
     const left = slots.find(x => x.role==='att' && x.index===0), right = slots.find(x => x.role==='att' && x.index===2);
-    qa.assign(left.id, 'qa-9'); qa.assign(right.id, 'qa-8');
-    const wingerSwap = S.slotAssignments[left.id]==='qa-9' && S.slotAssignments[right.id]==='qa-8' && slots.filter(x=>x.id!==left.id&&x.id!==right.id).every(x=>S.slotAssignments[x.id]===before[x.id]);
+    const leftPlayer = before[left.id], rightPlayer = before[right.id];
+    // Move the right winger directly into the left winger's slot: only those two slots should exchange occupants.
+    qa.assign(left.id, rightPlayer);
+    const wingerSwap = S.slotAssignments[left.id]===rightPlayer && S.slotAssignments[right.id]===leftPlayer && slots.filter(x=>x.id!==left.id&&x.id!==right.id).every(x=>S.slotAssignments[x.id]===before[x.id]);
     qa.assign(right.id, 'qa-11');
-    const reserveInheritsSlot = S.slotAssignments[right.id]==='qa-11' && S.squad.find(p=>p.id==='qa-8').role==='reserva' && !S.squad.find(p=>p.id==='qa-8').starter;
+    const displaced = S.squad.find(p=>p.id===leftPlayer);
+    const reserveInheritsSlot = S.slotAssignments[right.id]==='qa-11' && displaced?.role==='reserva' && !displaced?.starter;
     const uniqueAssignments = new Set(Object.values(S.slotAssignments)).size === Object.values(S.slotAssignments).length;
     const widths = [65,135].map(widthPct => { S.tactical={...(S.tactical||{}),widthPct,attackDepth:80}; return qa.schema().map(x=>Math.max(4,Math.min(96,50+(x.x-50)*widthPct/100))); });
     const widthChanges = JSON.stringify(widths[0])!==JSON.stringify(widths[1]);
