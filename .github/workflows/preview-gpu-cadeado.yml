@@ -74,7 +74,7 @@ jobs:
           cat > android/app/build.gradle <<'GRADLE'
           plugins { id 'com.android.application' }
           android { namespace 'br.com.gerentefutebol'; compileSdk 35
-            defaultConfig { applicationId 'br.com.gerentefutebol.gpuprobe'; minSdk 23; targetSdk 28; versionCode 4; versionName "mestre-11-cadeado-${System.getenv('GITHUB_RUN_NUMBER')}" }
+            defaultConfig { applicationId 'br.com.gerentefutebol.gpulocktest'; minSdk 23; targetSdk 28; versionCode 4; versionName "mestre-11-cadeado-${System.getenv('GITHUB_RUN_NUMBER')}" }
           }
           GRADLE
           cat > android/app/src/main/AndroidManifest.xml <<'XML'
@@ -137,15 +137,15 @@ jobs:
             set -euo pipefail
             adb install -r Mestre-11-GPU-Android10-TESTE.apk
             adb logcat -c
-            adb shell am start -W -n br.com.gerentefutebol.gpuprobe/br.com.gerentefutebol.MainActivity
+            adb shell am start -W -n br.com.gerentefutebol.gpulocktest/br.com.gerentefutebol.MainActivity
             sleep 15
-            adb shell pidof br.com.gerentefutebol.gpuprobe
+            adb shell pidof br.com.gerentefutebol.gpulocktest
             adb shell dumpsys activity activities | grep -F 'br.com.gerentefutebol.MainActivity'
-            adb forward tcp:9222 localabstract:webview_devtools_remote_$(adb shell pidof br.com.gerentefutebol.gpuprobe | tr -d '\r')
+            adb forward tcp:9222 localabstract:webview_devtools_remote_$(adb shell pidof br.com.gerentefutebol.gpulocktest | tr -d '\r')
             python3 -m pip install -q websocket-client
-            adb shell dumpsys gfxinfo br.com.gerentefutebol.gpuprobe reset || true
+            adb shell dumpsys gfxinfo br.com.gerentefutebol.gpulocktest reset || true
             python3 smoke-gpu-cadeado.py || { adb logcat -d > gpu-diagnostic.log; echo ===RELEVANT_CRASH_LOG===; grep -iE -C 5 "FATAL EXCEPTION|has died|SIGSEGV|SIGABRT|Fatal signal|out of memory|lowmemorykiller|crash_dump|renderer.*crash|killed process|webview.*crash|ANR in|EGL_BAD|crashed|abort message|zygote.*killing" gpu-diagnostic.log | tail -500 || true; exit 1; }
-            adb shell dumpsys gfxinfo br.com.gerentefutebol.gpuprobe > gpu-gfxinfo.log
+            adb shell dumpsys gfxinfo br.com.gerentefutebol.gpulocktest > gpu-gfxinfo.log
             cat gpu-gfxinfo.log | head -60
             adb logcat -d -s AndroidRuntime:E GDFWeb:I chromium:E > android-runtime.log
             if grep -E 'FATAL EXCEPTION|Uncaught (SyntaxError|ReferenceError|TypeError)|Uncaught SyntaxError|Uncaught ReferenceError|Uncaught TypeError' android-runtime.log; then exit 1; fi
@@ -154,7 +154,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          gh release create mestre-11-gpu-cadeado-android10-run-${GITHUB_RUN_NUMBER} Mestre-11-GPU-Android10-TESTE.apk SHA256SUMS.txt --target "$GITHUB_SHA" --title 'Mestre 11 — cadeado e GPU Android 10 (TESTE)' --notes 'APK de teste atualizado para o pacote separado br.com.gerentefutebol.gpuprobe, versão 4. Mantém aceleração gráfica completa que o usuário confirmou fluida no Android 10. Adiciona um único cadeado na barra superior, somente na Visão geral: branco aberto mostra as barras/botões de navegação do sistema; azul fechado oculta barras com modo imersivo e guarda a escolha. Testes Android 10 de carreira, rolagem, partida e alternância nativa dos botões passaram. O Android ainda permite que gestos de borda revelem as barras; o app não desativa completamente gestos Home/Voltar sem modo quiosque administrado. Produção intacta.' --prerelease --latest=false
+          gh release create mestre-11-gpu-cadeado-android10-run-${GITHUB_RUN_NUMBER} Mestre-11-GPU-Android10-TESTE.apk SHA256SUMS.txt --target "$GITHUB_SHA" --title 'Mestre 11 — cadeado e GPU Android 10 (TESTE)' --notes 'APK de teste atualizado para o pacote separado br.com.gerentefutebol.gpulocktest, versão 4, instalação separada da GPU anterior. Exporte o backup antes e importe-o no aplicativo novo. Mantém aceleração gráfica completa que o usuário confirmou fluida no Android 10. Adiciona um único cadeado na barra superior, somente na Visão geral: branco aberto mostra as barras/botões de navegação do sistema; azul fechado oculta barras com modo imersivo e guarda a escolha. Testes Android 10 de carreira, rolagem, partida e alternância nativa dos botões passaram. O Android ainda permite que gestos de borda revelem as barras; o app não desativa completamente gestos Home/Voltar sem modo quiosque administrado. Produção intacta.' --prerelease --latest=false
       - uses: actions/upload-artifact@v4
         if: always()
         with:
