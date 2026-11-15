@@ -71,7 +71,8 @@ jobs:
             @Override public void onCreate(Bundle state){super.onCreate(state);
               getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN|View.SYSTEM_UI_FLAG_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY|View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN|View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
               game=new WebView(this);game.getSettings().setJavaScriptEnabled(true);game.getSettings().setDomStorageEnabled(true);game.getSettings().setMediaPlaybackRequiresUserGesture(false);
-              game.setWebChromeClient(new WebChromeClient(){@Override public boolean onShowFileChooser(WebView view,ValueCallback<Uri[]> callback,FileChooserParams params){if(filePathCallback!=null)filePathCallback.onReceiveValue(null);filePathCallback=callback;try{startActivityForResult(params.createIntent(),FILE_CHOOSER_REQUEST);return true;}catch(Exception e){filePathCallback=null;return false;}}});
+              WebView.setWebContentsDebuggingEnabled(true);
+              game.setWebChromeClient(new WebChromeClient(){@Override public boolean onConsoleMessage(ConsoleMessage message){android.util.Log.i("GDFWeb",message.message());return true;} @Override public boolean onShowFileChooser(WebView view,ValueCallback<Uri[]> callback,FileChooserParams params){if(filePathCallback!=null)filePathCallback.onReceiveValue(null);filePathCallback=callback;try{startActivityForResult(params.createIntent(),FILE_CHOOSER_REQUEST);return true;}catch(Exception e){filePathCallback=null;return false;}}});
               game.setWebViewClient(new WebViewClient(){@Override public WebResourceResponse shouldInterceptRequest(WebView view,WebResourceRequest request){if("https".equals(request.getUrl().getScheme())&&"game.gerentefutebol.local".equals(request.getUrl().getHost())){String path=request.getUrl().getPath();if(path==null||path.equals("/")||path.equals("/index.html"))try{return new WebResourceResponse("text/html","UTF-8",getAssets().open("index.html"));}catch(IOException e){return null;}if(path.startsWith("/assets/"))try{String name=path.substring(1);String mime=name.endsWith(".png")?"image/png":"application/octet-stream";return new WebResourceResponse(mime,null,getAssets().open(name));}catch(IOException e){return new WebResourceResponse("text/plain","UTF-8",200,"Not Found",null,new java.io.ByteArrayInputStream(new byte[0]));}}return super.shouldInterceptRequest(view,request);}@Override public void onPageFinished(WebView view,String url){view.evaluateJavascript("(function(){var b=document.getElementById('installApp');if(b)b.style.display='none';})()",null);}});
               setContentView(game);if(state!=null){if(game.restoreState(state)==null)game.loadUrl("https://game.gerentefutebol.local/index.html");}else game.loadUrl("https://game.gerentefutebol.local/index.html");
             }
@@ -107,31 +108,45 @@ jobs:
             sleep 15
             adb shell pidof br.com.gerentefutebol.supertest
             adb shell dumpsys activity activities | grep -F 'br.com.gerentefutebol.MainActivity'
-            adb shell uiautomator dump /sdcard/start.xml >/dev/null
-            adb shell cat /sdcard/start.xml > start.xml
-            grep -i 'Toque para continuar' start.xml
+            adb forward tcp:9222 localabstract:webview_devtools_remote_$(adb shell pidof br.com.gerentefutebol.supertest | tr -d '\r')
+            python3 -m pip install -q websocket-client
             python3 - <<'PY'
-            import re,subprocess
-            s=open('start.xml').read()
-            def tap(xml,pattern):
-                element=next(x for x in re.findall(r'<node [^>]+>',xml) if re.search(pattern,x,re.I))
-                a,b,c,d=map(int,re.search(r'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"',element).groups())
-                subprocess.run(['adb','shell','input','tap',str((a+c)//2),str((b+d)//2)],check=True)
-            tap(s,'Toque para continuar')
+            import json,urllib.request,time,websocket,itertools
+            pages=json.load(urllib.request.urlopen('http://localhost:9222/json'))
+            page=next(p for p in pages if p.get('type')=='page' and 'game.gerentefutebol.local' in p.get('url',''))
+            ws=websocket.create_connection(page['webSocketDebuggerUrl'],timeout=20,suppress_origin=True)
+            seq=itertools.count(1)
+            def js(expr):
+                i=next(seq);ws.send(json.dumps({'id':i,'method':'Runtime.evaluate','params':{'expression':expr,'returnByValue':True,'awaitPromise':True}}))
+                while True:
+                    r=json.loads(ws.recv())
+                    if r.get('id')!=i:continue
+                    if r['result'].get('exceptionDetails'):raise RuntimeError(r['result']['exceptionDetails'])
+                    return r['result']['result'].get('value')
+            def check(expr):
+                value=js(expr);print('ASSERT',expr,'=>',value,flush=True)
+                if not value: raise AssertionError(expr)
+            check("document.getElementById('moProgressLabel').textContent==='100%' && !document.getElementById('moContinue').disabled")
+            check("[...document.querySelectorAll('#moOpening img')].every(i=>i.complete&&i.naturalWidth>0)")
+            js("document.getElementById('moContinue').click()")
+            check("document.getElementById('moSplash').hidden && !document.getElementById('moMenu').hidden")
+            for panel,id in [('moSettingsModal','moSettings'),('moCreditsModal','moCredits'),('moExitModal','moExit')]:
+                js("document.getElementById('%s').click()"%id);check("!document.getElementById('%s').hidden"%panel)
+                js("document.querySelector('[data-mo-close=\"%s\"]').click()"%panel);check("document.getElementById('%s').hidden"%panel)
+            js("document.getElementById('moPlay').click()")
+            check("document.getElementById('moOpening').hidden && !document.getElementById('careerHome').classList.contains('hidden')")
+            js("document.getElementById('createCareerBtn').click()")
+            check("!document.getElementById('setup').classList.contains('hidden')")
+            js("document.getElementById('cwCountryNext').click()")
+            js("document.getElementById('cwDivisionNext').click()")
+            check("!document.getElementById('cwClubStep').hidden")
+            js("document.getElementById('start').click()")
+            check("!document.getElementById('app').classList.contains('hidden') && !!document.getElementById('play')")
+            js("document.getElementById('play').click()")
+            check("!!document.getElementById('liveMatch')")
+            print('PASS opening -> menu -> new career -> kickoff -> live match in Android WebView')
+            ws.close()
             PY
-            sleep 2
-            adb shell uiautomator dump /sdcard/menu.xml >/dev/null
-            adb shell cat /sdcard/menu.xml > menu.xml
-            grep -i 'JOGAR' menu.xml
-            python3 - <<'PY'
-            import re,subprocess
-            s=open('menu.xml').read();element=next(x for x in re.findall(r'<node [^>]+>',s) if re.search('JOGAR',x,re.I))
-            a,b,c,d=map(int,re.search(r'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"',element).groups());subprocess.run(['adb','shell','input','tap',str((a+c)//2),str((b+d)//2)],check=True)
-            PY
-            sleep 2
-            adb shell uiautomator dump /sdcard/careers.xml >/dev/null
-            adb shell cat /sdcard/careers.xml > careers.xml
-            grep -i 'Criar carreira' careers.xml
             adb logcat -d -s AndroidRuntime:E > android-runtime.log
             if grep -F 'FATAL EXCEPTION' android-runtime.log; then exit 1; fi
       - name: Publish isolated test prerelease
