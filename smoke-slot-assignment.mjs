@@ -5,10 +5,11 @@ import path from 'node:path';
 const html = path.resolve('mestre11-cadeado.html');
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
-const pageErrors = [];
-page.on('pageerror', error => { pageErrors.push(error); console.error('Browser page error:', error.stack || error.message); });
+page.on('pageerror', error => { throw error; });
 try {
   await page.goto(pathToFileURL(html).href + '?qaSlots', { waitUntil: 'domcontentloaded' });
+  // Wait until the app's opening overlay has completed before using the UI.
+  await page.waitForFunction(() => { const opening=document.querySelector('#moOpening'); return !opening || opening.hidden; }, null, { timeout: 15000 });
   // Run the real app UI's career creation flow; S remains private inside its IIFE.
   if (!(await page.evaluate(() => !!window.__slotQA?.state()?.squad?.length))) {
     await page.locator('#createCareerBtn').waitFor({ timeout: 15000 });
@@ -44,7 +45,6 @@ try {
     return {formationResults,wingerSwap,reserveInheritsSlot,uniqueAssignments,widthChanges,remapSafe};
   });
   console.log(JSON.stringify(result,null,2));
-  if (pageErrors.length) throw new Error(`Browser page errors: ${pageErrors.map(e => e.message).join('; ')}`);
   if (result.formationResults.some(x=>x.count!==11||x.unique!==11) || !result.wingerSwap || !result.reserveInheritsSlot || !result.uniqueAssignments || !result.widthChanges || !result.remapSafe) throw new Error('slot assignment assertions failed');
   console.log('PASS: seven formations, unique slot IDs, independent winger swap, bench replacement, tactical width, formation remap');
 } finally { await browser.close(); }
