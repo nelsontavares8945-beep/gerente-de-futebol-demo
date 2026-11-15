@@ -14,7 +14,7 @@ def check(expr):
     value=js(expr);print('ASSERT',expr,'=>',value,flush=True)
     if not value: raise AssertionError(expr)
 # Splash must be displayed initially without a progress bar or manual CTA, then auto-open career hub.
-check("document.getElementById('moOpening')!==null && document.getElementById('moMenu')===null && document.getElementById('moProgressLabel')===null && document.getElementById('moContinue')===null && document.querySelector('#moSplash img')===null && !document.getElementById('moSplash').style.backgroundImage")
+check("document.getElementById('moOpening')!==null && document.getElementById('moMenu')===null && document.getElementById('moProgressLabel')===null && document.getElementById('moContinue')===null && document.querySelector('#moSplash img')===null && getComputedStyle(document.getElementById('moSplash')).backgroundImage==='none'")
 for _ in range(20):
     if js("document.getElementById('moOpening').hidden && document.getElementById('moSplash').hidden && document.getElementById('careerHome') && !document.getElementById('careerHome').classList.contains('hidden')"): break
     time.sleep(.5)
