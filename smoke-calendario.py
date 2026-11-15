@@ -54,6 +54,7 @@ for _ in range(20):
     time.sleep(.1)
 else:raise AssertionError('Android did not release navigation bars')
 print('PASS single overview lock toggles white-open / blue-locked and Android immersive state')
+js("window.__readCareer=()=>JSON.parse(localStorage.getItem('gdf-career-slots-v1'))[0].data")
 # Require three separate dates with a completed recovery session on each, then only unlock the match on day 4.
 for training_day in range(1,4):
     js("document.querySelector('[data-tip-nav=\"Treino\"]').click()")
@@ -64,15 +65,15 @@ for training_day in range(1,4):
         if js("document.getElementById('runTraining').textContent.includes('concluído')"):break
         time.sleep(.25)
     else:raise AssertionError('Daily training session did not finish')
-    check("S.trainingDay===S.calendarDay && S.matchTrainingDays==="+str(training_day))
+    check("window.__readCareer().trainingDay===window.__readCareer().calendarDay && window.__readCareer().matchTrainingDays==="+str(training_day))
     js("document.getElementById('closeTraining').click()")
     js("document.querySelector('[data-tab=\"Visão geral\"]').click()")
     check("!!document.getElementById('advanceCareerDay')")
     js("document.getElementById('advanceCareerDay').click()")
-    check("S.calendarDay==="+str(training_day+1))
+    check("window.__readCareer().calendarDay==="+str(training_day+1))
     if training_day<3:
-        check("!document.getElementById('play') && !mcMatchReady()")
-check("S.matchTrainingDays===3 && mcMatchReady() && !!document.getElementById('play') && mcNextEvent().key==='league'")
+        check("!document.getElementById('play')")
+check("window.__readCareer().matchTrainingDays===3 && !!document.getElementById('play') && document.querySelector('.daily-scheduler').textContent.includes('rodada 1')")
 print('PASS 3 daily sessions on separate game-days, next-day advances, match unlocked only on day 4')
 js("window.__smokeAlerts=[];window.alert=(x)=>window.__smokeAlerts.push(String(x));window.confirm=(x)=>true")
 # Real Android gesture on a populated roster, checking actual scroll offset.
@@ -135,7 +136,7 @@ else:raise AssertionError('Full match did not finish')
 check("document.getElementById('matchMinute').textContent.includes('90') && document.getElementById('matchSummary') && !document.getElementById('matchSummary').classList.contains('hidden') && JSON.parse(localStorage.getItem('gdf-career-slots-v1')).length>0")
 js("document.getElementById('matchExit').click()")
 check("!document.getElementById('liveMatch') && !document.getElementById('app').classList.contains('hidden')")
-check("S.week===2 && S.dayMatchPlayed===true && S.matchTrainingDays===0 && !document.getElementById('play') && document.querySelector('.daily-scheduler').textContent.includes('Copa do Brasil')")
+check("window.__readCareer().week===2 && window.__readCareer().dayMatchPlayed===true && window.__readCareer().matchTrainingDays===0 && !document.getElementById('play') && document.querySelector('.daily-scheduler').textContent.includes('Copa do Brasil')")
 js("document.querySelector('[data-tab=\"Competições\"]').click()")
 check("document.querySelector('#view').textContent.includes('Copa do Brasil') && document.querySelector('#view').textContent.includes('Copa Libertadores') && !document.querySelector('#view').textContent.includes('Copa del Rey')")
 print('PASS league then same-country cup queue; no foreign-league tournaments mixed in')
