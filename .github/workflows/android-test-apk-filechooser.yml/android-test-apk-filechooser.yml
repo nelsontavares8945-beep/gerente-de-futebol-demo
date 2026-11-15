@@ -1,0 +1,81 @@
+name: Gerar APK seis melhorias — teste isolado
+run-name: APK teste ${{ github.ref_name }}
+on:
+  push:
+    paths:
+      - 'responsividade.html'
+      - 'icon-192.png'
+      - '.github/workflows/android-test-apk-filechooser.yml'
+permissions:
+  contents: write
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Criar projeto Android teste isolado
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f responsividade.html
+          mkdir -p android/app/src/main/java/br/com/gerentefutebol android/app/src/main/assets android/app/src/main/res/drawable
+          cp responsividade.html android/app/src/main/assets/index.html
+          cp icon-192.png android/app/src/main/res/drawable/icon.png
+          cat > android/settings.gradle <<'GRADLE'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
+          rootProject.name = 'GerenteFutebolTest'
+          include ':app'
+          GRADLE
+          cat > android/build.gradle <<'GRADLE'
+          plugins { id 'com.android.application' version '8.6.1' apply false }
+          GRADLE
+          cat > android/app/build.gradle <<'GRADLE'
+          plugins { id 'com.android.application' }
+          android { namespace 'br.com.gerentefutebol.testbuild'; compileSdk 35
+            defaultConfig { applicationId 'br.com.gerentefutebol.testbuild'; minSdk 23; targetSdk 28; versionCode 1; versionName "test-${System.getenv('GITHUB_RUN_NUMBER')}" }
+          }
+          GRADLE
+          cat > android/app/src/main/AndroidManifest.xml <<'XML'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+            <uses-permission android:name="android.permission.INTERNET" />
+            <application android:label="Gerente Futebol TESTE" android:icon="@drawable/icon" android:theme="@android:style/Theme.Material.NoActionBar" android:usesCleartextTraffic="false" android:allowBackup="true">
+              <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="landscape" android:configChanges="orientation|screenSize|keyboardHidden">
+                <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+              </activity>
+            </application>
+          </manifest>
+          XML
+          cat > android/app/src/main/java/br/com/gerentefutebol/MainActivity.java <<'JAVA'
+          package br.com.gerentefutebol;
+          import android.app.Activity; import android.os.Bundle; import android.view.View; import android.webkit.*; import android.content.Intent; import android.net.Uri; import java.io.IOException;
+          public class MainActivity extends Activity {
+            private static final int FILE_CHOOSER_REQUEST=101; private ValueCallback<Uri[]> filePathCallback; private WebView game;
+            @Override public void onCreate(Bundle state){super.onCreate(state);getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN|View.SYSTEM_UI_FLAG_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY|View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN|View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_LAYOUT_STABLE);game=new WebView(this);game.getSettings().setJavaScriptEnabled(true);game.getSettings().setDomStorageEnabled(true);game.getSettings().setMediaPlaybackRequiresUserGesture(false);game.setWebChromeClient(new WebChromeClient(){@Override public boolean onShowFileChooser(WebView view,ValueCallback<Uri[]> callback,FileChooserParams params){if(filePathCallback!=null)filePathCallback.onReceiveValue(null);filePathCallback=callback;try{startActivityForResult(params.createIntent(),FILE_CHOOSER_REQUEST);return true;}catch(Exception e){filePathCallback=null;return false;}}});game.setWebViewClient(new WebViewClient(){@Override public WebResourceResponse shouldInterceptRequest(WebView v,WebResourceRequest r){if(r.getUrl().toString().equals("https://game.gerentefutebol.local/index.html"))try{return new WebResourceResponse("text/html","UTF-8",getAssets().open("index.html"));}catch(IOException e){return null;}return super.shouldInterceptRequest(v,r);}@Override public void onPageFinished(WebView v,String u){v.evaluateJavascript("(function(){var b=document.getElementById('installApp');if(b)b.style.display='none';})()",null);}});setContentView(game);if(state!=null)game.restoreState(state);else game.loadUrl("https://game.gerentefutebol.local/index.html");}
+            @Override protected void onActivityResult(int requestCode,int resultCode,Intent data){if(requestCode==FILE_CHOOSER_REQUEST){ValueCallback<Uri[]> cb=filePathCallback;filePathCallback=null;if(cb!=null)cb.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode,data));return;}super.onActivityResult(requestCode,resultCode,data);}
+            @Override public void onSaveInstanceState(Bundle out){super.onSaveInstanceState(out);game.saveState(out);}@Override public void onBackPressed(){if(game.canGoBack())game.goBack();else super.onBackPressed();}
+          }
+          JAVA
+      - name: Build APK debug
+        run: gradle -p android --no-daemon assembleDebug
+      - name: Prepare checksum
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk Gerente-Futebol-Seis-Melhorias-TESTE.apk
+          sha256sum Gerente-Futebol-Seis-Melhorias-TESTE.apk > SHA256SUMS.txt
+      - name: Publish isolated test prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create teste-seis-melhorias-android-run-${GITHUB_RUN_NUMBER} Gerente-Futebol-Seis-Melhorias-TESTE.apk SHA256SUMS.txt --target "$GITHUB_SHA" --title 'Gerente de Futebol — seis melhorias (teste)' --notes 'Build experimental de teste separada do jogo principal. Exporte seus saves antes de atualizar; regras de competições simplificadas.' --prerelease --latest=false
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GDF-Seis-Melhorias-TESTE-${{ github.run_number }}
+          path: Gerente-Futebol-Seis-Melhorias-TESTE.apk
+          if-no-files-found: error
+          retention-days: 14
