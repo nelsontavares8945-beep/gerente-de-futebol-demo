@@ -130,7 +130,6 @@ jobs:
             set -euo pipefail
             adb install -r Mestre-11-TESTE.apk
             adb logcat -c
-            trap 'adb logcat -d > gpu-diagnostic.log || true; echo ====DIAGNOSTIC_ERRORS====; grep -iE -C 3 "FATAL EXCEPTION|has died|SIGSEGV|SIGABRT|Fatal signal|out of memory|lowmemorykiller|crash_dump|renderer.*crash|killed process|webview.*crash|ANR in|EGL_BAD|OpenGLRenderer" gpu-diagnostic.log | tail -500 || true; adb shell dumpsys gfxinfo br.com.gerentefutebol.gpuprobe > gpu-gfxinfo.log || true; adb shell screencap -p /sdcard/gpu-final.png && adb pull /sdcard/gpu-final.png gpu-final.png || true' EXIT
             adb shell am start -W -n br.com.gerentefutebol.gpuprobe/br.com.gerentefutebol.MainActivity
             sleep 15
             adb shell pidof br.com.gerentefutebol.gpuprobe
@@ -138,7 +137,7 @@ jobs:
             adb forward tcp:9222 localabstract:webview_devtools_remote_$(adb shell pidof br.com.gerentefutebol.gpuprobe | tr -d '\r')
             python3 -m pip install -q websocket-client
             adb shell dumpsys gfxinfo br.com.gerentefutebol.gpuprobe reset || true
-            python3 smoke-liso.py
+            python3 smoke-liso.py || { adb logcat -d > gpu-diagnostic.log; echo ===RELEVANT_CRASH_LOG===; grep -iE -C 5 "FATAL EXCEPTION|has died|SIGSEGV|SIGABRT|Fatal signal|out of memory|lowmemorykiller|crash_dump|renderer.*crash|killed process|webview.*crash|ANR in|EGL_BAD|crashed|abort message|zygote.*killing" gpu-diagnostic.log | tail -500 || true; exit 1; }
             adb shell dumpsys gfxinfo br.com.gerentefutebol.gpuprobe > gpu-gfxinfo.log
             cat gpu-gfxinfo.log | head -60
             adb logcat -d -s AndroidRuntime:E GDFWeb:I chromium:E > android-runtime.log
