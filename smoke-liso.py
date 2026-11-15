@@ -1,4 +1,4 @@
-import json,urllib.request,time,websocket,itertools
+import json,urllib.request,time,websocket,itertools,subprocess,re
 pages=json.load(urllib.request.urlopen('http://localhost:9222/json'))
 page=next(p for p in pages if p.get('type')=='page' and 'game.gerentefutebol.local' in p.get('url',''))
 ws=websocket.create_connection(page['webSocketDebuggerUrl'],timeout=20,suppress_origin=True)
@@ -41,6 +41,20 @@ check("!document.getElementById('cwClubStep').hidden")
 js("document.getElementById('start').click()")
 check("!document.getElementById('app').classList.contains('hidden') && !!document.getElementById('play')")
 js("window.__smokeAlerts=[];window.alert=(x)=>window.__smokeAlerts.push(String(x));window.confirm=(x)=>true")
+# Real Android gesture on a populated roster, checking actual scroll offset.
+js("document.querySelector('[data-tab=Elenco]').click()")
+time.sleep(2)
+js("window.scrollTo(0,0);document.querySelectorAll('*').forEach(e=>{if(e.scrollHeight>e.clientHeight+80)e.scrollTop=0})")
+scroll_before=js("Math.max(window.scrollY,document.scrollingElement.scrollTop,...[...document.querySelectorAll('*')].map(e=>e.scrollTop||0))")
+size=subprocess.check_output(['adb','shell','wm','size'],text=True)
+width,height=map(int,re.findall(r'(\d+)x(\d+)',size)[-1]);width,height=max(width,height),min(width,height)
+subprocess.run(['adb','shell','input','swipe',str(width//2),str(int(height*.78)),str(width//2),str(int(height*.28)),'500'],check=True)
+time.sleep(1)
+scroll_after=js("Math.max(window.scrollY,document.scrollingElement.scrollTop,...[...document.querySelectorAll('*')].map(e=>e.scrollTop||0))")
+print('ANDROID SWIPE roster offset',scroll_before,'->',scroll_after,flush=True)
+if scroll_after<=scroll_before:raise AssertionError('Swipe did not scroll roster')
+js("document.querySelector('[data-tab=Visão geral]').click()")
+
 # Verify three departments remain present in the integrated ZIP evolution.
 js("document.querySelector('[data-tab=\"Centro do clube\"]').click()")
 js("document.querySelector('[data-extra=\"Instalações\"]').click()")
@@ -70,5 +84,22 @@ time.sleep(4)
 endBall=js("document.getElementById('liveBall').style.left+','+document.getElementById('liveBall').style.top")
 print('RADAR BALL',startBall,'->',endBall,flush=True)
 check("!!document.getElementById('liveMatch') && document.getElementById('matchMinute').textContent!=='0′' && !!document.getElementById('liveBall') && document.querySelectorAll('#livePitch .match-player-token').length===22")
+
+# Exercise pause, fast play, halftime and final whistle, then verify career persistence.
+js("document.getElementById('matchPause').click()")
+check("document.getElementById('matchPause').textContent.includes('Continuar')")
+js("document.getElementById('matchPause').click();document.querySelector('[data-speed=\"2\"]').click()")
+for _ in range(24):
+    if js("document.getElementById('matchState').textContent==='INTERVALO'"):break
+    time.sleep(.5)
+else:raise AssertionError('Halftime not reached')
+js("document.getElementById('noSubsContinue').click()")
+for _ in range(26):
+    if js("document.getElementById('matchState').textContent==='FIM DE JOGO'"):break
+    time.sleep(.5)
+else:raise AssertionError('Full match did not finish')
+check("document.getElementById('matchMinute').textContent.includes('90') && document.getElementById('matchSummary') && !document.getElementById('matchSummary').classList.contains('hidden') && JSON.parse(localStorage.getItem('gdf-career-slots-v1')).length>0")
+js("document.getElementById('matchExit').click()")
+check("!document.getElementById('liveMatch') && !document.getElementById('app').classList.contains('hidden')")
 print('PASS automatic splash, career start, active numbered 22-player radar, and live match controls')
 ws.close()
