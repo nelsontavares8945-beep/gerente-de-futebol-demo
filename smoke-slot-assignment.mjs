@@ -22,6 +22,7 @@ try {
   }
   const result = await page.evaluate(() => {
     const qa = window.__slotQA, S = qa.state();
+    if (!qa || !S) throw new Error('QA bridge/state unavailable');
     const formations = ['4-3-3','4-4-2','3-4-3','3-5-2','4-2-3-1','4-1-4-1','5-3-2'];
     const formationResults = formations.map(formation => {
       qa.formation(formation);
@@ -44,6 +45,7 @@ try {
     const remapSafe = qa.schema().length===11 && new Set(Object.values(S.slotAssignments)).size===Object.values(S.slotAssignments).length;
     return {formationResults,wingerSwap,reserveInheritsSlot,uniqueAssignments,widthChanges,remapSafe};
   });
+  if (pageErrors.length) throw new Error('Page errors: '+pageErrors.join(' | '));
   console.log(JSON.stringify(result,null,2));
   if (result.formationResults.some(x=>x.count!==11||x.unique!==11) || !result.wingerSwap || !result.reserveInheritsSlot || !result.uniqueAssignments || !result.widthChanges || !result.remapSafe) throw new Error('slot assignment assertions failed');
   console.log('PASS: seven formations, unique slot IDs, independent winger swap, bench replacement, tactical width, formation remap');
