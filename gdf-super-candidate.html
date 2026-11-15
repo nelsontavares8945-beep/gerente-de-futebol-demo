@@ -927,7 +927,7 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'){if(visible(
 if(visible(modal)&&e.key==='Tab'){var list=Array.prototype.slice.call(modal.querySelectorAll('button:not(:disabled),[href],input:not(:disabled),[tabindex]:not([tabindex="-1"])')).filter(visible);if(!list.length)return;var first=list[0],last=list[list.length-1];if(e.shiftKey&&document.activeElement===first){last.focus();e.preventDefault()}else if(!e.shiftKey&&document.activeElement===last){first.focus();e.preventDefault()}}});
 if(modal)modal.addEventListener('click',function(e){if(e.target===modal)closeDialog()});
 /* Prevent accidental double-start while the existing synchronous career creation runs. */
-document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('#start');if(!b||b.disabled)return;b.disabled=true;b.setAttribute('aria-busy','true');b.setAttribute('aria-label','Iniciando carreira');var label=b.querySelector('span')||b;b.setAttribute('data-gdf-starting','true');label.classList.add('gdf-busy-label')},true);
+/* Career creation stays synchronous; do not disable the button before its target handler. */
 window.GDFControls={enhance:enhance,closeDialog:closeDialog,menuClose:menuClose};
 })();
 </script>
