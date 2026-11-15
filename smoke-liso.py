@@ -53,7 +53,7 @@ time.sleep(1)
 scroll_after=js("Math.max(window.scrollY,document.scrollingElement.scrollTop,...[...document.querySelectorAll('*')].map(e=>e.scrollTop||0))")
 print('ANDROID SWIPE roster offset',scroll_before,'->',scroll_after,flush=True)
 if scroll_after<=scroll_before:raise AssertionError('Swipe did not scroll roster')
-js("document.querySelector('[data-tab=Visão geral]').click()")
+js("document.querySelector('[data-tab=\"Visão geral\"]').click()")
 
 # Verify three departments remain present in the integrated ZIP evolution.
 js("document.querySelector('[data-tab=\"Centro do clube\"]').click()")
