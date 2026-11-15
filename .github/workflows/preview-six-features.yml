@@ -1,0 +1,45 @@
+name: Gerente Futebol — APK teste seis melhorias
+on:
+  push:
+    paths:
+      - 'responsividade.html'
+      - '.github/workflows/preview-six-features.yml'
+permissions:
+  contents: write
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Build test app with file chooser
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p android/app/src/main/java/br/com/gerentefutebol android/app/src/main/assets android/app/src/main/res/drawable
+          cp responsividade.html android/app/src/main/assets/index.html
+          cp icon-192.png android/app/src/main/res/drawable/icon.png
+          echo "pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }; dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }; rootProject.name='GDFTest'; include ':app'" > android/settings.gradle
+          echo "plugins { id 'com.android.application' version '8.6.1' apply false }" > android/build.gradle
+          echo "plugins { id 'com.android.application' }; android { namespace 'br.com.gerentefutebol.testbuild'; compileSdk 35; defaultConfig { applicationId 'br.com.gerentefutebol.testbuild'; minSdk 23; targetSdk 28; versionCode 1; versionName 'test' } }" > android/app/build.gradle
+          cat > android/app/src/main/AndroidManifest.xml <<'XML'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android"><uses-permission android:name="android.permission.INTERNET"/><application android:label="Gerente Futebol TESTE" android:icon="@drawable/icon" android:theme="@android:style/Theme.Material.NoActionBar" android:usesCleartextTraffic="false" android:allowBackup="true"><activity android:name=".MainActivity" android:exported="true" android:screenOrientation="landscape" android:configChanges="orientation|screenSize|keyboardHidden"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity></application></manifest>
+          XML
+          cat > android/app/src/main/java/br/com/gerentefutebol/MainActivity.java <<'JAVA'
+          package br.com.gerentefutebol;
+          import android.app.*;import android.os.*;import android.view.*;import android.webkit.*;import android.content.*;import android.net.*;import java.io.*;
+          public class MainActivity extends Activity {
+          private WebView game;private ValueCallback<Uri[]> chooser;private static final int PICK=101;
+          public void onCreate(Bundle b){super.onCreate(b);getWindow().getDecorView().setSystemUiVisibility(5894|1024|512);game=new WebView(this);game.getSettings().setJavaScriptEnabled(true);game.getSettings().setDomStorageEnabled(true);game.setWebChromeClient(new WebChromeClient(){public boolean onShowFileChooser(WebView v,ValueCallback<Uri[]> c,FileChooserParams p){if(chooser!=null)chooser.onReceiveValue(null);chooser=c;try{startActivityForResult(p.createIntent(),PICK);return true;}catch(Exception e){chooser=null;return false;}}});game.setWebViewClient(new WebViewClient(){public WebResourceResponse shouldInterceptRequest(WebView v,WebResourceRequest r){if(r.getUrl().toString().equals("https://game.gerentefutebol.local/index.html"))try{return new WebResourceResponse("text/html","UTF-8",getAssets().open("index.html"));}catch(IOException e){return null;}return super.shouldInterceptRequest(v,r);}});setContentView(game);game.loadUrl("https://game.gerentefutebol.local/index.html");}
+          protected void onActivityResult(int r,int c,Intent d){if(r==PICK){ValueCallback<Uri[]> x=chooser;chooser=null;if(x!=null)x.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(c,d));return;}super.onActivityResult(r,c,d);}}
+          JAVA
+          gradle -p android --no-daemon assembleDebug
+          cp android/app/build/outputs/apk/debug/app-debug.apk Gerente-Futebol-Seis-Melhorias-TESTE.apk
+          sha256sum Gerente-Futebol-Seis-Melhorias-TESTE.apk > SHA256SUMS.txt
+          gh release create teste-seis-melhorias-android-run-${GITHUB_RUN_NUMBER} Gerente-Futebol-Seis-Melhorias-TESTE.apk SHA256SUMS.txt --target "$GITHUB_SHA" --title 'Gerente Futebol — atualização de teste' --notes 'Teste isolado; faça backup dos saves antes de instalar.' --prerelease --latest=false
