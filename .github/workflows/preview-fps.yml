@@ -61,7 +61,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p android/app/src/main/java/br/com/gerentefutebol android/app/src/main/assets/assets android/app/src/main/res/drawable
-          cp gdf-super-candidate.html android/app/src/main/assets/index.html
+          cp mestre11-fps.html android/app/src/main/assets/index.html
           cp icon-192.png android/app/src/main/res/drawable/icon.png
           cp assets/*.png android/app/src/main/assets/assets/
           test -s android/app/src/main/assets/assets/tela-carregamento-mestre-11.png
@@ -83,7 +83,7 @@ jobs:
           cat > android/app/src/main/AndroidManifest.xml <<'XML'
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
             <uses-permission android:name="android.permission.INTERNET" />
-            <application android:label="Mestre 11 TESTE • FPS" android:icon="@drawable/icon" android:theme="@android:style/Theme.Material.NoActionBar" android:usesCleartextTraffic="false" android:allowBackup="true">
+            <application android:label="Mestre 11 TESTE • FPS" android:icon="@drawable/icon" android:theme="@android:style/Theme.Material.NoActionBar" android:hardwareAccelerated="false" android:usesCleartextTraffic="false" android:allowBackup="true">
               <activity android:name="br.com.gerentefutebol.MainActivity" android:exported="true" android:screenOrientation="landscape" android:configChanges="orientation|screenSize|keyboardHidden">
                 <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
               </activity>
@@ -99,7 +99,7 @@ jobs:
             private WebView game;
             @Override public void onCreate(Bundle state){super.onCreate(state);
               getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN|View.SYSTEM_UI_FLAG_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY|View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN|View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
-              game=new WebView(this);game.getSettings().setJavaScriptEnabled(true);game.getSettings().setDomStorageEnabled(true);game.getSettings().setMediaPlaybackRequiresUserGesture(false);
+              game=new WebView(this);game.setLayerType(View.LAYER_TYPE_SOFTWARE,null);game.getSettings().setJavaScriptEnabled(true);game.getSettings().setDomStorageEnabled(true);game.getSettings().setMediaPlaybackRequiresUserGesture(false);
               WebView.setWebContentsDebuggingEnabled(true);
               game.setWebChromeClient(new WebChromeClient(){@Override public boolean onConsoleMessage(ConsoleMessage message){android.util.Log.i("GDFWeb",message.message());return true;} @Override public boolean onShowFileChooser(WebView view,ValueCallback<Uri[]> callback,FileChooserParams params){if(filePathCallback!=null)filePathCallback.onReceiveValue(null);filePathCallback=callback;try{startActivityForResult(params.createIntent(),FILE_CHOOSER_REQUEST);return true;}catch(Exception e){filePathCallback=null;return false;}}});
               game.setWebViewClient(new WebViewClient(){@Override public WebResourceResponse shouldInterceptRequest(WebView view,WebResourceRequest request){if("https".equals(request.getUrl().getScheme())&&"game.gerentefutebol.local".equals(request.getUrl().getHost())){String path=request.getUrl().getPath();if(path==null||path.equals("/")||path.equals("/index.html"))try{return new WebResourceResponse("text/html","UTF-8",getAssets().open("index.html"));}catch(IOException e){return null;}if(path.startsWith("/assets/"))try{String name=path.substring(1);String mime=name.endsWith(".png")?"image/png":"application/octet-stream";return new WebResourceResponse(mime,null,getAssets().open(name));}catch(IOException e){return new WebResourceResponse("text/plain","UTF-8",200,"Not Found",null,new java.io.ByteArrayInputStream(new byte[0]));}}return super.shouldInterceptRequest(view,request);}@Override public void onPageFinished(WebView view,String url){view.evaluateJavascript("(function(){var b=document.getElementById('installApp');if(b)b.style.display='none';})()",null);}});
