@@ -1,8 +1,8 @@
 {
   "id": "/gerente-de-futebol-demo/",
-  "name": "Gerente de Futebol",
-  "short_name": "Gerente Futebol",
-  "description": "Jogo de gerenciamento de futebol com clubes brasileiros, elenco, treinos, táticas e competições.",
+  "name": "Mestre 11",
+  "short_name": "Mestre 11",
+  "description": "Mestre 11 — jogo de gestão de clubes, elenco, treinos, táticas e competições de futebol.",
   "lang": "pt-BR",
   "start_url": "/gerente-de-futebol-demo/?source=installed-app",
   "scope": "/gerente-de-futebol-demo/",
