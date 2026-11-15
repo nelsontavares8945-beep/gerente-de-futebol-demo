@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        api: [29, 34]
+        api: [29, 30]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -160,9 +160,9 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: Mestre-11-TESTE-api34
+          name: Mestre-11-TESTE-api30
       - name: Publish isolated test prerelease
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        run: gh release create mestre-11-render-compativel-run-${GITHUB_RUN_NUMBER} Mestre-11-TESTE.apk SHA256SUMS.txt --target "$GITHUB_SHA" --title 'Mestre 11 — teste de renderização compatível' --notes 'Teste de desempenho. No Android 11 ou posterior usa aceleração gráfica padrão; no Android 10 ou anterior mantém renderização em software por compatibilidade. Inclui layout de partida aprovado, correções anteriores e abertura direta sem imagens antigas. Testado nos emuladores Android 10 e 14, inclusive carreira, rolagem, radar e partida completa. O resultado de fluidez no celular físico ainda precisa ser confirmado. Faça backup das carreiras antes de atualizar.' --prerelease --latest=false
+        run: gh release create mestre-11-render-compativel-run-${GITHUB_RUN_NUMBER} Mestre-11-TESTE.apk SHA256SUMS.txt --target "$GITHUB_SHA" --title 'Mestre 11 — teste de renderização compatível' --notes 'Teste de desempenho. No Android 11 ou posterior usa aceleração gráfica padrão; no Android 10 ou anterior mantém renderização em software por compatibilidade. Inclui layout de partida aprovado, correções anteriores e abertura direta sem imagens antigas. Testado nos emuladores Android 10 e 11, inclusive carreira, rolagem, radar e partida completa. O resultado de fluidez no celular físico ainda precisa ser confirmado. Faça backup das carreiras antes de atualizar.' --prerelease --latest=false
