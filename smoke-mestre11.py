@@ -13,7 +13,14 @@ def js(expr):
 def check(expr):
     value=js(expr);print('ASSERT',expr,'=>',value,flush=True)
     if not value: raise AssertionError(expr)
-check("document.getElementById('moProgressLabel').textContent==='100%' && !document.getElementById('moContinue').disabled")
+for _ in range(40):
+    ready=js("document.getElementById('moProgressLabel').textContent==='100%' && !document.getElementById('moContinue').disabled")
+    if ready:break
+    time.sleep(1)
+else:
+    print('BOOT STATE',js("JSON.stringify({label:document.getElementById('moProgressLabel').textContent,ready:document.readyState})"),flush=True)
+    raise AssertionError('Splash failed to reach 100% after 40s')
+print('PASS loading reached 100%')
 check("[...document.querySelectorAll('#moOpening img')].every(i=>i.complete&&i.naturalWidth>0)")
 js("document.getElementById('moContinue').click()")
 check("document.getElementById('moSplash').hidden && !document.getElementById('moMenu').hidden")
