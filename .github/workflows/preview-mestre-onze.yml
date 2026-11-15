@@ -140,7 +140,7 @@ jobs:
             adb shell dumpsys activity activities | grep -F 'br.com.gerentefutebol.MainActivity'
             adb forward tcp:9222 localabstract:webview_devtools_remote_$(adb shell pidof br.com.gerentefutebol.supertest | tr -d '\r')
             python3 -m pip install -q websocket-client
-            python3 smoke-mestre11.py
+            python3 smoke-mestre11.py || { echo "--- ANDROID LOGS ON FAILURE ---"; adb logcat -d -t 4000 | grep -Ei 'fatal|crash|outofmemory|killed|renderer|chromium|GDFWeb|WebView|SIGSEGV' | tail -200 || true; exit 1; }
             adb logcat -d -s AndroidRuntime:E GDFWeb:I chromium:E > android-runtime.log
             if grep -E 'FATAL EXCEPTION|Uncaught (SyntaxError|ReferenceError|TypeError)|Uncaught SyntaxError|Uncaught ReferenceError|Uncaught TypeError' android-runtime.log; then exit 1; fi
       - name: Publish isolated test prerelease
