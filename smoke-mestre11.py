@@ -22,6 +22,7 @@ else:
     raise AssertionError('Splash failed to reach 100% after 40s')
 print('PASS loading reached 100%')
 check("[...document.querySelectorAll('#moOpening img')].every(i=>i.complete&&i.naturalWidth>0)")
+check("document.documentElement.dataset.gdfPerformance!==undefined && typeof window.gdfStartFpsCalibration==='function'")
 js("document.getElementById('moContinue').click()")
 check("document.getElementById('moSplash').hidden && !document.getElementById('moMenu').hidden")
 for panel,id in [('moSettingsModal','moSettings'),('moCreditsModal','moCredits'),('moExitModal','moExit')]:
