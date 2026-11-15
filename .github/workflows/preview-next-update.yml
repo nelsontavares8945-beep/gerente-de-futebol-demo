@@ -1,0 +1,115 @@
+name: Gerente Futebol — Super atualização TESTE
+run-name: Super atualização teste ${{ github.run_number }}
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - gdf-apk-safe-test-f2a2f5a
+    paths:
+      - 'gdf-super-candidate.html'
+      - '.github/workflows/preview-super-update.yml'
+permissions:
+  contents: write
+jobs:
+  test-apk:
+    if: github.ref == 'refs/heads/gdf-apk-safe-test-f2a2f5a'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Build isolated Android TEST app
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p android/app/src/main/java/br/com/gerentefutebol android/app/src/main/assets android/app/src/main/res/drawable
+          cp gdf-super-candidate.html android/app/src/main/assets/index.html
+          cp icon-192.png android/app/src/main/res/drawable/icon.png
+          cat > android/settings.gradle <<'GRADLE'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
+          rootProject.name='GerenteFutebolSuperTest'; include ':app'
+          GRADLE
+          cat > android/build.gradle <<'GRADLE'
+          plugins { id 'com.android.application' version '8.6.1' apply false }
+          GRADLE
+          cat > android/app/build.gradle <<'GRADLE'
+          plugins { id 'com.android.application' }
+          android { namespace 'br.com.gerentefutebol'; compileSdk 35
+            defaultConfig { applicationId 'br.com.gerentefutebol.supertest'; minSdk 23; targetSdk 28; versionCode 2; versionName "super-test-${System.getenv('GITHUB_RUN_NUMBER')}" }
+          }
+          GRADLE
+          cat > android/app/src/main/AndroidManifest.xml <<'XML'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+            <uses-permission android:name="android.permission.INTERNET" />
+            <application android:label="Gerente Futebol SUPER TESTE" android:icon="@drawable/icon" android:theme="@android:style/Theme.Material.NoActionBar" android:usesCleartextTraffic="false" android:allowBackup="true">
+              <activity android:name="br.com.gerentefutebol.MainActivity" android:exported="true" android:screenOrientation="landscape" android:configChanges="orientation|screenSize|keyboardHidden">
+                <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+              </activity>
+            </application>
+          </manifest>
+          XML
+          cat > android/app/src/main/java/br/com/gerentefutebol/MainActivity.java <<'JAVA'
+          package br.com.gerentefutebol;
+          import android.app.Activity; import android.os.Bundle; import android.view.View; import android.webkit.*; import android.content.Intent; import android.net.Uri; import java.io.IOException;
+          public class MainActivity extends Activity {
+            private static final int FILE_CHOOSER_REQUEST=101;
+            private ValueCallback<Uri[]> filePathCallback;
+            private WebView game;
+            @Override public void onCreate(Bundle state){super.onCreate(state);
+              getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN|View.SYSTEM_UI_FLAG_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY|View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN|View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+              game=new WebView(this);game.getSettings().setJavaScriptEnabled(true);game.getSettings().setDomStorageEnabled(true);game.getSettings().setMediaPlaybackRequiresUserGesture(false);
+              game.setWebChromeClient(new WebChromeClient(){@Override public boolean onShowFileChooser(WebView view,ValueCallback<Uri[]> callback,FileChooserParams params){if(filePathCallback!=null)filePathCallback.onReceiveValue(null);filePathCallback=callback;try{startActivityForResult(params.createIntent(),FILE_CHOOSER_REQUEST);return true;}catch(Exception e){filePathCallback=null;return false;}}});
+              game.setWebViewClient(new WebViewClient(){@Override public WebResourceResponse shouldInterceptRequest(WebView view,WebResourceRequest request){if(request.getUrl().toString().equals("https://game.gerentefutebol.local/index.html"))try{return new WebResourceResponse("text/html","UTF-8",getAssets().open("index.html"));}catch(IOException e){return null;}return super.shouldInterceptRequest(view,request);}@Override public void onPageFinished(WebView view,String url){view.evaluateJavascript("(function(){var b=document.getElementById('installApp');if(b)b.style.display='none';})()",null);}});
+              setContentView(game);if(state!=null){if(game.restoreState(state)==null)game.loadUrl("https://game.gerentefutebol.local/index.html");}else game.loadUrl("https://game.gerentefutebol.local/index.html");
+            }
+            @Override protected void onActivityResult(int requestCode,int resultCode,Intent data){if(requestCode==FILE_CHOOSER_REQUEST){ValueCallback<Uri[]> callback=filePathCallback;filePathCallback=null;if(callback!=null)callback.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode,data));return;}super.onActivityResult(requestCode,resultCode,data);}
+            @Override public void onSaveInstanceState(Bundle out){super.onSaveInstanceState(out);if(game!=null)game.saveState(out);}
+            @Override public void onBackPressed(){if(game!=null&&game.canGoBack())game.goBack();else super.onBackPressed();}
+          }
+          JAVA
+          gradle -p android --no-daemon assembleDebug
+          apk=android/app/build/outputs/apk/debug/app-debug.apk
+          test -s "$apk"
+          cp "$apk" Gerente-Futebol-Super-TESTE.apk
+          sha256sum Gerente-Futebol-Super-TESTE.apk > SHA256SUMS.txt
+      - name: Enable virtualisation for Android emulator
+        shell: bash
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Verify APK opens on isolated Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          arch: x86_64
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            set -euo pipefail
+            adb install -r Gerente-Futebol-Super-TESTE.apk
+            adb logcat -c
+            adb shell am start -W -n br.com.gerentefutebol.supertest/br.com.gerentefutebol.MainActivity
+            sleep 15
+            adb shell pidof br.com.gerentefutebol.supertest
+            adb shell dumpsys activity activities | grep -F 'br.com.gerentefutebol.MainActivity'
+            adb logcat -d -s AndroidRuntime:E > android-runtime.log
+            if grep -F 'FATAL EXCEPTION' android-runtime.log; then exit 1; fi
+      - name: Publish isolated test prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create super-atualizacao-teste-run-${GITHUB_RUN_NUMBER} Gerente-Futebol-Super-TESTE.apk SHA256SUMS.txt --target "$GITHUB_SHA" --title 'Gerente Futebol — Super Atualização (TESTE)' --notes 'Versão experimental isolada. Faça backup antes de instalar. Teste de inicialização em emulador; não validada em celular físico.' --prerelease --latest=false
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Gerente-Futebol-Super-TESTE-${{ github.run_number }}
+          path: Gerente-Futebol-Super-TESTE.apk
+          if-no-files-found: error
+          retention-days: 14
