@@ -5,7 +5,8 @@ import path from 'node:path';
 const html = path.resolve('mestre11-cadeado.html');
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
-page.on('pageerror', error => { throw error; });
+const pageErrors = [];
+page.on('pageerror', error => { pageErrors.push(error); console.error('Browser page error:', error.stack || error.message); });
 try {
   await page.goto(pathToFileURL(html).href + '?qaSlots', { waitUntil: 'domcontentloaded' });
   // Run the real app UI's career creation flow; S remains private inside its IIFE.
@@ -43,6 +44,7 @@ try {
     return {formationResults,wingerSwap,reserveInheritsSlot,uniqueAssignments,widthChanges,remapSafe};
   });
   console.log(JSON.stringify(result,null,2));
+  if (pageErrors.length) throw new Error(`Browser page errors: ${pageErrors.map(e => e.message).join('; ')}`);
   if (result.formationResults.some(x=>x.count!==11||x.unique!==11) || !result.wingerSwap || !result.reserveInheritsSlot || !result.uniqueAssignments || !result.widthChanges || !result.remapSafe) throw new Error('slot assignment assertions failed');
   console.log('PASS: seven formations, unique slot IDs, independent winger swap, bench replacement, tactical width, formation remap');
 } finally { await browser.close(); }
