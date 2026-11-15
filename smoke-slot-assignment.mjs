@@ -40,7 +40,7 @@ try {
     const wingerSwap = S.slotAssignments[left.id]===rightPlayer && S.slotAssignments[right.id]===leftPlayer && slots.filter(x=>x.id!==left.id&&x.id!==right.id).every(x=>S.slotAssignments[x.id]===before[x.id]);
     qa.assign(right.id, 'qa-11');
     const displaced = S.squad.find(p=>p.id===leftPlayer);
-    const reserveInheritsSlot = S.slotAssignments[right.id]==='qa-11' && displaced?.role==='reserva' && !displaced?.starter;
+    const reserveInheritsSlot = S.slotAssignments[right.id]==='qa-11' && ['banco','reserva'].includes(displaced?.role) && !displaced?.starter;
     const uniqueAssignments = new Set(Object.values(S.slotAssignments)).size === Object.values(S.slotAssignments).length;
     const widths = [65,135].map(widthPct => { S.tactical={...(S.tactical||{}),widthPct,attackDepth:80}; return qa.schema().map(x=>Math.max(4,Math.min(96,50+(x.x-50)*widthPct/100))); });
     const widthChanges = JSON.stringify(widths[0])!==JSON.stringify(widths[1]);
