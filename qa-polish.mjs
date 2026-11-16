@@ -7,10 +7,9 @@ const context=await browser.newContext({viewport:{width:1024,height:768}});
 const page=await context.newPage();
 const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push('console: '+m.text())});
 const tab=async name=>{await page.evaluate(n=>document.querySelector(`[data-tab="${n}"]`)?.click(),name);await page.waitForFunction(n=>window.currentTab===n,name,{timeout:10000})};
+const collides=a=>a.some((x,i)=>a.some((y,j)=>j>i&&x.left<y.right&&x.right>y.left&&x.top<y.bottom&&x.bottom>y.top));
 try{
  await page.goto(pathToFileURL(html).href+'?qaSlots',{waitUntil:'load',timeout:30000});
- // Boot hides the splash after a short timer. Give the file-origin page a little extra time,
- // then report all diagnostics instead of timing out without showing the cause.
  await page.waitForTimeout(1200);
  const boot=await page.evaluate(()=>({opening:!!document.querySelector('#moOpening'),hidden:!!document.querySelector('#moOpening')?.hidden,careerHome:!!document.querySelector('#careerHome'),careerHidden:!!document.querySelector('#careerHome')?.classList.contains('hidden'),probe:!!window.__slotQA,body:document.body.innerText.slice(0,300)}));
  if(!boot.opening||!boot.hidden)throw new Error('App boot did not complete: '+JSON.stringify({boot,errors}));
@@ -27,7 +26,6 @@ try{
  await page.waitForFunction(()=>document.querySelectorAll('.squad-mini-pitch .squad-field-player').length===11,null,{timeout:10000});
  const squadBoxes=await page.locator('.squad-mini-pitch .squad-field-player').evaluateAll(xs=>xs.map(x=>{let r=x.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,slot:x.dataset.slotToken,label:x.textContent}}));
  if(squadBoxes.some(x=>!x.slot||!x.label))throw new Error('Elenco formation has missing slot/player labels');
- const collides=a=>a.some((x,i)=>a.some((y,j)=>j>i&&x.left<y.right&&x.right>y.left&&x.top<y.bottom&&x.bottom>y.top));
  if(collides(squadBoxes))throw new Error('Elenco pitch has overlapping player labels');
  console.log('PASS Elenco 4-2-3-1: 11 slot-linked labels with no overlap at 1024x768');
  await tab('Treino');await page.locator('#openTrainingStudio').click();
@@ -52,9 +50,25 @@ try{
   const n=await page.locator('.squad-mini-pitch .squad-field-player').count();
   if(n!==11)throw new Error(`${form} rendered ${n} field players`);
  }
- console.log('PASS all seven formations retain exactly 11 occupants');
+ const saved=await page.evaluate(()=>({formation:window.__slotQA.state().formation, slots:Object.keys(window.__slotQA.state().slotAssignments||{}).length}));
+ if(saved.formation!=='5-3-2'||saved.slots<11)throw new Error('Tactics UI did not persist formation/slot assignment: '+JSON.stringify(saved));
+ console.log('PASS actual Táticas menu changes all seven formations and persists slot links');
+ await page.reload({waitUntil:'load'});await page.waitForTimeout(700);
+ await page.waitForFunction(()=>!!window.__slotQA?.state()?.squad?.length,null,{timeout:10000});
+ const reloadState=await page.evaluate(()=>({formation:window.__slotQA.state().formation,count:window.__slotQA.state().squad.length,slots:Object.keys(window.__slotQA.state().slotAssignments||{}).length}));
+ if(reloadState.formation!=='5-3-2'||reloadState.count<11||reloadState.slots<11)throw new Error('Synthetic career failed persistence reload: '+JSON.stringify(reloadState));
+ console.log('PASS isolated synthetic career survives reload with calendar-compatible existing save identifiers',JSON.stringify(reloadState));
+ await page.evaluate(()=>window.__slotQA.formation('4-2-3-1'));
+ await tab('Elenco');
+ await page.waitForFunction(()=>document.querySelectorAll('.squad-mini-pitch .squad-field-player').length===11);
+ await page.setViewportSize({width:390,height:844});
+ const mobile=await page.locator('.squad-mini-pitch').evaluate(el=>{let r=el.getBoundingClientRect();return {left:r.left,right:r.right,width:r.width,viewport:innerWidth}});
+ if(mobile.left<0||mobile.right>390||mobile.width<200)throw new Error('Mobile Elenco layout clips or collapses: '+JSON.stringify(mobile));
+ await page.setViewportSize({width:1024,height:768});
+ console.log('PASS mobile portrait Elenco pitch fits viewport',JSON.stringify(mobile));
  if(errors.length)throw new Error(errors.join(' | '));
  await page.screenshot({path:'scratch/mestre11-polish-smoke.png',fullPage:true});
+ console.log('PASS all seven formations retain exactly 11 occupants; no browser errors');
  console.log('PASS Mestre 11 polished UI, progressive training, market pricing, ratings');
 } catch(e){
  try{await page.screenshot({path:'scratch/mestre11-polish-smoke.png',fullPage:true})}catch{}
