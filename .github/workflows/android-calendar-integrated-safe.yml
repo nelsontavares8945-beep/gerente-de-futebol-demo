@@ -1,0 +1,128 @@
+name: Android APK — calendar + lineup integrated QA (manual safe)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build-and-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - name: Checkout main QA candidate
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Checkout source artwork and smoke test from verified feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature-slot-assignment-2026-11-15
+          path: feature-source
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Prepare backwards-compatible HTML for Android 10 WebView
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save esbuild@0.25.0
+          python3 - <<'PY'
+          import pathlib, re, subprocess, tempfile, hashlib
+          p=pathlib.Path('mestre11-calendar-integration-qa.html')
+          actual=hashlib.sha256(p.read_bytes()).hexdigest()
+          assert actual=='60e4e190c29378f3881981cf3b967a8904388de3040f8469a6db7dc0366a1836', f'Unexpected candidate SHA256: {actual}'
+          html=p.read_text(encoding='utf-8')
+          assert '</style>\n<style id="mestre-onze-css">' in html, 'Expected inline stylesheet boundary missing'
+          pattern=re.compile(r'(<script\b[^>]*>)(.*?)(</script\s*>)',re.I|re.S)
+          def transpile(m):
+              code=m.group(2)
+              if not code.strip() or 'src=' in m.group(1).lower(): return m.group(0)
+              with tempfile.NamedTemporaryFile('w',suffix='.js',encoding='utf-8',delete=False) as f:
+                  f.write(code); src=pathlib.Path(f.name)
+              out=src.with_suffix('.out.js')
+              subprocess.run(['npx','esbuild',str(src),'--target=chrome75','--outfile='+str(out)],check=True,stdout=subprocess.DEVNULL)
+              result=out.read_text(encoding='utf-8'); src.unlink(); out.unlink()
+              return m.group(1)+result+m.group(3)
+          html=pattern.sub(transpile,html)
+          p.write_text(html,encoding='utf-8')
+          print('Inline JavaScript transpiled for Android 10 Chrome 75 WebView')
+          PY
+      - name: Generate Android app
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p android/app/src/main/java/br/com/gerentefutebol android/app/src/main/assets/assets android/app/src/main/res/drawable
+          cp mestre11-calendar-integration-qa.html android/app/src/main/assets/index.html
+          cp icon-192.png android/app/src/main/res/drawable/icon.png
+          cp feature-source/assets/menu-mestre-11.png android/app/src/main/assets/assets/menu-mestre-11.png
+          cat > android/settings.gradle <<'GRADLE'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
+          rootProject.name = 'Mestre11GpuLock'
+          include ':app'
+          GRADLE
+          echo "plugins { id 'com.android.application' version '8.6.1' apply false }" > android/build.gradle
+          cat > android/app/build.gradle <<'GRADLE'
+          plugins { id 'com.android.application' }
+          android { namespace 'br.com.gerentefutebol'; compileSdk 35
+            defaultConfig { applicationId 'br.com.gerentefutebol.gpulocktest'; minSdk 23; targetSdk 28; versionCode 6; versionName '1.0-calendar-integrated-qa' }
+          }
+          GRADLE
+          cat > android/app/src/main/AndroidManifest.xml <<'MANIFEST'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android"><uses-permission android:name="android.permission.INTERNET"/><application android:label="Mestre 11 GPU + Cadeado" android:icon="@drawable/icon" android:theme="@android:style/Theme.Material.NoActionBar" android:usesCleartextTraffic="false" android:allowBackup="true" android:hardwareAccelerated="true"><activity android:name="br.com.gerentefutebol.MainActivity" android:exported="true" android:screenOrientation="landscape" android:configChanges="orientation|screenSize|keyboardHidden"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity></application></manifest>
+          MANIFEST
+          cat > android/app/src/main/java/br/com/gerentefutebol/MainActivity.java <<'JAVA'
+          package br.com.gerentefutebol;
+          import android.app.Activity; import android.os.Bundle; import android.view.View; import android.webkit.*; import android.content.Intent; import android.net.Uri; import java.io.IOException;
+          public class MainActivity extends Activity {
+            private static final int FILE_CHOOSER_REQUEST=101; private ValueCallback<Uri[]> filePathCallback; private WebView game; private boolean systemNavLocked=false;
+            private int lockedUiFlags(){return View.SYSTEM_UI_FLAG_FULLSCREEN|View.SYSTEM_UI_FLAG_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY|View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN|View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_LAYOUT_STABLE;}
+            private final class NavControl { @JavascriptInterface public void setLocked(final boolean locked){runOnUiThread(()->{systemNavLocked=locked;if(locked)getWindow().getDecorView().setSystemUiVisibility(lockedUiFlags());else{if(game!=null)game.evaluateJavascript("if(document.fullscreenElement&&document.exitFullscreen){document.exitFullscreen().catch(function(){})}",null);getWindow().getDecorView().setSystemUiVisibility(0);}});} @JavascriptInterface public boolean isLocked(){return systemNavLocked;} }
+            @Override public void onCreate(Bundle state){super.onCreate(state);getWindow().getDecorView().setSystemUiVisibility(0);game=new WebView(this);game.setLayerType(View.LAYER_TYPE_HARDWARE,null);game.getSettings().setJavaScriptEnabled(true);game.getSettings().setDomStorageEnabled(true);game.getSettings().setMediaPlaybackRequiresUserGesture(false);game.addJavascriptInterface(new NavControl(),"AndroidNavControl");WebView.setWebContentsDebuggingEnabled(true);
+              game.setWebChromeClient(new WebChromeClient(){@Override public boolean onConsoleMessage(ConsoleMessage m){android.util.Log.i("GDFWeb",m.message());return true;} @Override public boolean onShowFileChooser(WebView v,ValueCallback<Uri[]> c,FileChooserParams p){if(filePathCallback!=null)filePathCallback.onReceiveValue(null);filePathCallback=c;try{startActivityForResult(p.createIntent(),FILE_CHOOSER_REQUEST);return true;}catch(Exception e){filePathCallback=null;return false;}}});
+              game.setWebViewClient(new WebViewClient(){@Override public WebResourceResponse shouldInterceptRequest(WebView v,WebResourceRequest r){if("https".equals(r.getUrl().getScheme())&&"game.gerentefutebol.local".equals(r.getUrl().getHost())){String p=r.getUrl().getPath();if(p==null||p.equals("/")||p.equals("/index.html"))try{return new WebResourceResponse("text/html","UTF-8",getAssets().open("index.html"));}catch(IOException e){return null;}if(p.startsWith("/assets/"))try{String n=p.substring(1);String mime=n.endsWith(".png")?"image/png":n.endsWith(".webp")?"image/webp":"application/octet-stream";return new WebResourceResponse(mime,null,getAssets().open(n));}catch(IOException e){return new WebResourceResponse("text/plain","UTF-8",200,"Not Found",null,new java.io.ByteArrayInputStream(new byte[0]));}}return super.shouldInterceptRequest(v,r);}@Override public void onPageFinished(WebView v,String u){v.evaluateJavascript("(function(){var b=document.getElementById('installApp');if(b)b.style.display='none';})()",null);}});
+              setContentView(game);if(state!=null){if(game.restoreState(state)==null)game.loadUrl("https://game.gerentefutebol.local/index.html");}else game.loadUrl("https://game.gerentefutebol.local/index.html");}
+            @Override protected void onActivityResult(int r,int result,Intent data){if(r==FILE_CHOOSER_REQUEST){ValueCallback<Uri[]> c=filePathCallback;filePathCallback=null;if(c!=null)c.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(result,data));return;}super.onActivityResult(r,result,data);}
+            @Override public void onSaveInstanceState(Bundle out){super.onSaveInstanceState(out);if(game!=null)game.saveState(out);}
+            @Override public void onBackPressed(){if(game!=null&&game.canGoBack())game.goBack();else super.onBackPressed();}
+          }
+          JAVA
+      - name: Assemble APK
+        run: gradle -p android --no-daemon assembleDebug
+      - name: Verify package and Android Debug signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk=android/app/build/outputs/apk/debug/app-debug.apk
+          test -s "$apk"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$apk" | grep -F "package: name='br.com.gerentefutebol.gpulocktest' versionCode='6'"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$apk"
+      - name: Enable KVM for Android emulator
+        shell: bash
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Android 10 emulator GPU, lock, calendar, lineup and match smoke
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          target: default
+          arch: x86
+          profile: pixel_2
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            bash -c 'set -e; adb install android/app/build/outputs/apk/debug/app-debug.apk && adb logcat -c && adb shell am start -W -n br.com.gerentefutebol.gpulocktest/br.com.gerentefutebol.MainActivity && sleep 15 && adb shell pidof br.com.gerentefutebol.gpulocktest && adb shell dumpsys activity activities | grep -F br.com.gerentefutebol.MainActivity && adb forward tcp:9222 localabstract:webview_devtools_remote_$(adb shell pidof br.com.gerentefutebol.gpulocktest | tr -d "\r") && python3 -m pip install -q websocket-client && python3 feature-source/Mestre11-projeto/branch-gdf-apk-safe-test-f2a2f5a/smoke-calendario.py && adb logcat -d -s AndroidRuntime:E GDFWeb:I chromium:E > android-runtime.log && ! grep -E "FATAL EXCEPTION|Uncaught (SyntaxError|ReferenceError|TypeError)" android-runtime.log'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Mestre11-Calendar-Integrated-QA-AndroidDebug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7
