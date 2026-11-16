@@ -21,7 +21,7 @@ def wait(expr,secs=30):
 def click(selector):
  check('!!document.querySelector('+json.dumps(selector)+')')
  js('document.querySelector('+json.dumps(selector)+').click()');time.sleep(.5)
-wait("document.querySelector('#moOpening')?.hidden && document.querySelector('#careerHome') && !document.querySelector('#careerHome').classList.contains('hidden')")
+wait("document.querySelector('#moOpening') && document.querySelector('#moOpening').hidden && document.querySelector('#careerHome') && !document.querySelector('#careerHome').classList.contains('hidden')")
 for s in ['#createCareerBtn','#cwCountryNext','#cwDivisionNext','#start']:click(s)
 wait("!!document.querySelector('#app') && !document.querySelector('#app').classList.contains('hidden')")
 check("!!window.AndroidNavControl && !!document.querySelector('#systemNavLock')")
