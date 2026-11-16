@@ -11,7 +11,7 @@ jobs:
       - name: Checkout the approved and browser-tested candidate
         uses: actions/checkout@v4
         with:
-          ref: d43b13e8bbd378a43a6c57af1746c89f75e645b3
+          ref: 86ebdda18492423288a0249493634a124b2dd339
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
