@@ -1,0 +1,32 @@
+name: QA — treino, elenco e mercado Mestre 11
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install browser test
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Check test candidate files
+        run: python3 -c "from pathlib import Path; assert Path('mestre11-polish-qa.html').is_file() and Path('mestre11-polish-qa.html').stat().st_size > 100000; assert Path('qa-polish.mjs').is_file(); print('Candidate and smoke script present')"
+      - name: Run isolated polish browser test
+        run: node qa-polish.mjs
+      - name: Save isolated screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mestre11-polish-browser-qa
+          path: scratch/mestre11-polish-smoke.png
+          if-no-files-found: ignore
+          retention-days: 7
