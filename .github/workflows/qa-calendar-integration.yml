@@ -1,0 +1,52 @@
+name: QA — calendar + lineup integration
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout main candidate files only
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright and Chromium
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Validate integrated HTML scripts
+        run: |
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          import re, subprocess, tempfile
+          class Check(HTMLParser):
+              def __init__(self): super().__init__(); self.scripts=0
+              def handle_starttag(self, tag, attrs):
+                  if tag == 'script': self.scripts += 1
+          p=Path('mestre11-calendar-integration-qa.html')
+          assert p.is_file() and p.stat().st_size > 100000, 'Candidate file missing or unexpectedly small'
+          html=p.read_text(encoding='utf-8'); parser=Check(); parser.feed(html); parser.close()
+          assert parser.scripts >= 2, f'Expected inline scripts, found {parser.scripts}'
+          scripts=re.findall(r'<script\b[^>]*>(.*?)</script\s*>',html,re.I|re.S)
+          for code in scripts:
+              if code.strip():
+                  with tempfile.NamedTemporaryFile('w',suffix='.js',delete=False,encoding='utf8') as f: f.write(code); name=f.name
+                  subprocess.run(['node','--check',name],check=True)
+          print(f'HTML parsed; {parser.scripts} script tags; inline JS syntax passed')
+          PY
+      - name: Run integrated browser UI smoke
+        run: node .github/qa/qa-calendar-integration.mjs
+      - name: Save smoke screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: calendar-integration-ui-smoke
+          path: scratch/calendar-integration-smoke.png
+          if-no-files-found: ignore
+          retention-days: 7
