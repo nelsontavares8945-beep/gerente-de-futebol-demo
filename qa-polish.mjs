@@ -85,11 +85,16 @@ try{
  await page.locator('[data-youth-train="0"]').click();
  const youthTrained=await page.evaluate(()=>({xp:window.__futureQA.state().youthPlayers[0]?.xp,rating:window.__futureQA.state().youthPlayers[0]?.rating}));
  if(youthTrained.xp!==1)throw new Error('Youth individual session did not add XP: '+JSON.stringify(youthTrained));
- await page.evaluate(()=>{let s=window.__futureQA.state(); s.squad=s.squad.slice(0,34)}); await tab('Base de jovens');
  await page.locator('[data-youth-promote="0"]').click();
  const youthPromoted=await page.evaluate(n=>({squad:window.__futureQA.state().squad.some(p=>p.name===n&&p.youthProduct),base:window.__futureQA.state().youthPlayers.length,graduates:window.__futureQA.state().youthGraduates.length}),youthSigned.name);
  if(!youthPromoted.squad||youthPromoted.base!==youthBefore.count||youthPromoted.graduates!==1)throw new Error('Youth promotion flow did not move player to senior squad/history: '+JSON.stringify(youthPromoted));
  console.log('PASS individual youth training and promotion to first team',JSON.stringify(youthPromoted));
+ await page.locator('[data-youth-sign]').first().click();
+ const youthLoanName=await page.evaluate(()=>window.__futureQA.state().youthPlayers[0].name);
+ page.once('dialog',d=>d.accept());await page.locator('[data-youth-loan="0"]').click();
+ const youthLoaned=await page.evaluate(()=>({y:window.__futureQA.state().youthPlayers[0].loanUntilYear,loans:window.__futureQA.state().loans.filter(x=>x.type==='base').length}));
+ if(!youthLoaned.y||youthLoaned.loans!==1)throw new Error('Youth loan failed to record agreement: '+JSON.stringify(youthLoaned));
+ console.log('PASS youth loan UI records temporary agreement',JSON.stringify(youthLoaned));
  await page.reload({waitUntil:'load'});await page.waitForTimeout(1200);await page.locator('#openCareersBtn').click();await page.locator('[data-enter-career]').first().click();
  if(!await page.evaluate(n=>window.__futureQA.state().youthGraduates.some(x=>x.name===n),youthSigned.name))throw new Error('Youth promotion history did not persist on career reload');
  console.log('PASS youth promotion history survives career reload');
@@ -98,6 +103,9 @@ try{
  const medName=await page.evaluate(()=>window.__futureQA.state().squad[0].name);
  await page.evaluate(n=>window.__futureQA.createInjury(n,4),medName);await tab('Departamento médico');
  if(!await page.locator('[data-med-treat]').count())throw new Error('Medical case not rendered in department');
+ const initialAssignments=await page.evaluate(()=>JSON.stringify(window.__futureQA.state().slotAssignments));
+ const injuredIsStarter=await page.evaluate(n=>{let p=window.__futureQA.state().squad.find(x=>x.name===n);return !!(p.starter||p.role==='titular')},medName);
+ if(injuredIsStarter){page.once('dialog',d=>d.accept());const eligible=await page.evaluate(()=>window.__futureQA.checkLineup());if(eligible!==false||await page.evaluate(()=>JSON.stringify(window.__futureQA.state().slotAssignments))!==initialAssignments)throw new Error('Medical check altered lineup or let injured starter play');console.log('PASS injured starter blocked with slot assignments unchanged');await tab('Departamento médico')}
  const medBefore=await page.evaluate(()=>{let s=window.__futureQA.state();let c=s.medicalCases.find(x=>!x.closed);return {days:c.daysRemaining,energy:s.squad.find(x=>x.name===c.name)?.energy}});
  await page.locator('[data-med-treat]').first().click();
  const medAfter=await page.evaluate(()=>{let s=window.__futureQA.state();let c=s.medicalCases.find(x=>x.id.startsWith('qa-med-'));return {days:c.daysRemaining,treated:c.treated,cash:s.money}});
@@ -146,8 +154,9 @@ try{
  console.log('PASS contract renewal UI updates wage, term and inbox',JSON.stringify({before:contractBefore,after:contractAfter}));
  await page.locator('#m11RenewCancel').click();await page.waitForSelector('.m11-proposal-modal',{state:'detached'});
 
- await page.evaluate(()=>window.__slotQA.formation('4-2-3-1'));await tab('Elenco');
- await page.waitForFunction(()=>document.querySelectorAll('.squad-mini-pitch .squad-field-player').length===11);
+ await tab('Táticas');await page.locator('[data-formation="4-2-3-1"]').click();await tab('Elenco');
+ page.once('dialog',d=>d.accept());await page.locator('#autoLineup').click();
+ await page.waitForFunction(()=>document.querySelectorAll('.squad-mini-pitch .squad-field-player').length===11,null,{timeout:10000});
  await page.setViewportSize({width:844,height:390});await page.waitForTimeout(350);
  const mobile=await page.locator('.squad-mini-pitch').evaluate(el=>{let r=el.getBoundingClientRect();return {left:r.left,right:r.right,width:r.width,viewport:innerWidth,transform:getComputedStyle(document.querySelector('#landscapeRoot')).transform}});
  if(mobile.left<0||mobile.right>844||mobile.width<200||mobile.transform!=='none')throw new Error('Mobile landscape Elenco layout clips or remains rotated: '+JSON.stringify(mobile));
