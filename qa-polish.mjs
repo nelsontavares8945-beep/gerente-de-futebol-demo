@@ -84,6 +84,7 @@ try{
  await page.evaluate(()=>{if(window.__savedRandomForLoan)Math.random=window.__savedRandomForLoan});
  if(loan.count<=loanBefore||!loan.loans.length||!loan.message.includes('aceita'))throw new Error('Loan acceptance flow did not update squad and history: '+JSON.stringify({loan,errors}));
  console.log('PASS loan negotiation animation and accepted loan state',JSON.stringify(loan));
+ await page.locator('#m11CancelLoan').click();await page.waitForSelector('.m11-proposal-modal',{state:'detached'});
  await tab('Contratos');const contractBefore=await page.evaluate(()=>{const p=window.__slotQA.state().squad[0];return {name:p.name,wage:p.wage,years:p.contractYears}});
  await page.locator('[data-renew]').first().click();await page.locator('#m11RenewApply').click();
  await page.waitForFunction(name=>window.__slotQA.state().squad[0].name===name&&window.__slotQA.state().squad[0].contractYears>0,contractBefore.name,{timeout:10000});
