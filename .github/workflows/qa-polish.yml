@@ -19,7 +19,9 @@ jobs:
           npm install --no-save playwright@1.56.1
           npx playwright install --with-deps chromium
       - name: Check test candidate files
-        run: python3 -c "from pathlib import Path; assert Path('mestre11-polish-qa.html').is_file() and Path('mestre11-polish-qa.html').stat().st_size > 100000; assert Path('qa-polish.mjs').is_file(); print('Candidate and smoke script present')"
+        run: python3 -c "from pathlib import Path; assert Path('mestre11-polish-qa.html').is_file() and Path('mestre11-polish-qa.html').stat().st_size > 100000; assert Path('qa-polish.mjs').is_file() and Path('qa-management.mjs').is_file(); print('Candidate and smoke script present')"
+      - name: Run isolated management and individual development tests
+        run: node qa-management.mjs
       - name: Run isolated polish browser test
         run: node qa-polish.mjs
       - name: Save isolated screenshot
@@ -27,6 +29,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: mestre11-polish-browser-qa
-          path: scratch/mestre11-polish-smoke.png
+          path: |
+            scratch/mestre11-polish-smoke.png
+            scratch/management-failure.png
           if-no-files-found: ignore
           retention-days: 7
