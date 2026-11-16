@@ -9,8 +9,6 @@ const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console'
 const tab=async name=>{await page.evaluate(n=>document.querySelector(`[data-tab="${n}"]`)?.click(),name);await page.waitForFunction(n=>window.currentTab===n,name,{timeout:10000})};
 try{
  await page.goto(pathToFileURL(html).href+'?qaSlots',{waitUntil:'load',timeout:30000});
- // Boot hides the splash after a short timer. Give the file-origin page a little extra time,
- // then report all diagnostics instead of timing out without showing the cause.
  await page.waitForTimeout(1200);
  const boot=await page.evaluate(()=>({opening:!!document.querySelector('#moOpening'),hidden:!!document.querySelector('#moOpening')?.hidden,careerHome:!!document.querySelector('#careerHome'),careerHidden:!!document.querySelector('#careerHome')?.classList.contains('hidden'),probe:!!window.__slotQA,body:document.body.innerText.slice(0,300)}));
  if(!boot.opening||!boot.hidden)throw new Error('App boot did not complete: '+JSON.stringify({boot,errors}));
@@ -72,8 +70,6 @@ try{
  if(rotated.transform!=='rotate(90deg)'||rotated.width!=='844px'||rotated.height!=='390px'||rotated.left!=='390px'||rotated.overflowY!=='auto')throw new Error('Mobile portrait landscape-lock root dimensions/rotation missing: '+JSON.stringify(rotated));
  await page.setViewportSize({width:1024,height:768});await page.waitForTimeout(350);
  console.log('PASS mobile landscape layout and portrait landscape-lock',JSON.stringify({mobile,rotated}));
- // Match integration: resume the synthetic career, finish its three required daily
- // sessions using the real studio/calendar controls, and complete a full timed match.
  await tab('Visão geral');
  const preMatch=await page.evaluate(()=>{const s=window.__slotQA.state();return {seasonEngine:s.seasonEngine,day:s.calendarDay,trainingDay:s.trainingDay,trainingDays:s.matchTrainingDays,week:s.week,club:s.club}});
  if(!preMatch.seasonEngine||preMatch.week!==1||preMatch.trainingDays!==1)throw new Error('Unexpected isolated daily-season setup before match QA: '+JSON.stringify(preMatch));
@@ -86,8 +82,10 @@ try{
    await page.locator('#closeTraining').click();
    await tab('Visão geral');
  }
+ await page.locator('#advanceCareerDay').click();
+ await page.waitForFunction((expectedDay)=>window.__slotQA.state().calendarDay===expectedDay,preMatch.day+3,{timeout:10000});
  const ready=await page.evaluate(()=>{const s=window.__slotQA.state();return {day:s.calendarDay,trainingDay:s.trainingDay,trainingDays:s.matchTrainingDays,ready:document.querySelector('#play')?.textContent,week:s.week}});
- if(ready.trainingDays!==3||ready.trainingDay!==ready.day||!ready.ready?.includes('Jogar')||ready.week!==1)throw new Error('Three-training-day gate did not unlock the round-one match: '+JSON.stringify(ready));
+ if(ready.trainingDays!==3||ready.trainingDay===ready.day||!ready.ready?.includes('Jogar')||ready.week!==1)throw new Error('Three-training-day gate did not unlock the round-one match: '+JSON.stringify(ready));
  await page.locator('#play').click(); await page.waitForSelector('#liveMatch',{timeout:10000});
  await page.locator('[data-speed="2"]').click();
  await page.waitForSelector('#noSubsContinue:not(:disabled)',{timeout:30000});
@@ -99,13 +97,12 @@ try{
  await tab('Calendário');
  const calendarText=await page.locator('[data-calendar-state="played"]').first().innerText();
  if(!calendarText.includes(`${final.lastMatch.gf}–${final.lastMatch.ga}`))throw new Error('Calendar did not display the finalized score: '+calendarText);
- console.log('PASS calendar displays completed round score: '+calendarText.replace(/\\s+/g,' ').trim());
+ console.log('PASS calendar displays completed round score: '+calendarText.replace(/\s+/g,' ').trim());
  await page.reload({waitUntil:'load'});await page.waitForTimeout(1200);await page.locator('#openCareersBtn').click();await page.locator('[data-enter-career]').first().click();
  await page.waitForFunction(()=>!!window.__slotQA?.state()?.squad?.length,null,{timeout:10000});
  const persistedMatch=await page.evaluate(()=>{const s=window.__slotQA.state();return {week:s.week,day:s.calendarDay,trainingDays:s.matchTrainingDays,dayMatchPlayed:s.dayMatchPlayed,lastMatch:s.lastMatch&&{round:s.lastMatch.round,gf:s.lastMatch.gf,ga:s.lastMatch.ga},played:s.played?.[1],trainingCount:s.careerTrainingCount}});
  if(persistedMatch.week!==2||persistedMatch.day!==final.day||persistedMatch.trainingDays!==0||!persistedMatch.dayMatchPlayed||persistedMatch.lastMatch?.gf!==final.lastMatch.gf||persistedMatch.played?.ga!==final.lastMatch.ga||persistedMatch.trainingCount<3)throw new Error('Match result/calendar/training did not survive isolated career reload: '+JSON.stringify(persistedMatch));
  console.log('PASS match, scheduler, training and played result survive saved-career reload',JSON.stringify(persistedMatch));
- // Guard the modest difficulty curve statically and inspect the stable career keys and SW registration.
  const staticAudit=await page.evaluate(()=>({challengeScript:[...document.scripts].map(x=>x.textContent).find(x=>x.includes('let seasonChallenge='),''),careerKeys:[...document.scripts].map(x=>x.textContent).join(' ').match(/CAREER_SLOTS_KEY='([^']+)', CAREER_ACTIVE_KEY='([^']+)'/)?.slice(1)||[],swRegister:[...document.scripts].some(x=>x.textContent.includes("serviceWorker.register('/gerente-de-futebol-demo/sw.js'"))}));
  const challenge=staticAudit.challengeScript?.match(/let seasonChallenge=([^;]+);/);
  if(!challenge||!challenge[1].includes('Math.min(.18')||!challenge[1].includes('careerTrainingCount')||staticAudit.careerKeys[0]!=='gdf-career-slots-v1'||staticAudit.careerKeys[1]!=='gdf-career-active-v1'||!staticAudit.swRegister)throw new Error('Difficulty cap / persistent career keys / SW registration audit failed: '+JSON.stringify({challenge:challenge?.[1],keys:staticAudit.careerKeys,swRegister:staticAudit.swRegister}));
