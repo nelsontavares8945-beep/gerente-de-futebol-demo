@@ -19,9 +19,9 @@ const readAssign=()=>selectors.evaluateAll(xs=>Object.fromEntries(xs.map(x=>[x.d
 for (const role of ['att','def']) {
   const pair=schema.filter(x=>x.role===role&&[0,2].includes(x.index));
   if(pair.length!==2)throw Error('Could not find both sides for '+role);
-  let state=await readAssign(),p1=state[pair[0].id],p2=state[pair[1].id];
+  let state=await readAssign(),snapshot={...state},p1=state[pair[0].id],p2=state[pair[1].id];
   await assignUI(pair[0].id,p2);state=await readAssign();
-  if(state[pair[0].id]!==p2||state[pair[1].id]!==p1||Object.keys(state).some(k=>k!==pair[0].id&&k!==pair[1].id&&state[k]!==before[slots.indexOf(k)]))throw Error('Side swap displaced unrelated slots ('+role+')');
+  if(state[pair[0].id]!==p2||state[pair[1].id]!==p1||Object.keys(state).some(k=>k!==pair[0].id&&k!==pair[1].id&&state[k]!==snapshot[k]))throw Error('Side swap displaced unrelated slots ('+role+')');
   console.log('PASS '+(role==='att'?'winger':'center-back')+' left/right swap without moving unrelated positions');
 }
 const bench=await page.evaluate(()=>window.__slotQA.state().squad.find(p=>p.role==='banco'&&!p.starter)?.id);
