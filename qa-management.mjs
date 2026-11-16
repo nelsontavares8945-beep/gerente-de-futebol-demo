@@ -2,6 +2,22 @@ import { chromium } from 'playwright';import {pathToFileURL} from 'node:url';imp
 const browser=await chromium.launch({headless:true}),context=await browser.newContext({viewport:{width:1024,height:768}}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});const tab=async n=>{await page.locator("#menuToggle").click();await page.locator(`[data-tab="${n}"]`).click();await page.waitForFunction(x=>window.currentTab===x,n,{timeout:10000})};try{
 await page.goto(pathToFileURL(path.resolve('mestre11-polish-qa.html')).href+'?qaSlots',{waitUntil:'load'});await page.waitForTimeout(900);await page.locator('#createCareerBtn').click();for(const x of ['#cwCountryNext','#cwDivisionNext','#start'])await page.locator(x).click();await page.waitForFunction(()=>window.__managementQA?.state()?.squad?.length>0,null,{timeout:10000});let s=await page.evaluate(()=>window.__managementQA.state());if(!s.squad?.length||s.squad.length<11)throw Error('No synthetic career');
 for(const n of ['Diretoria','Finanças','Patrocinadores','Estádio','Torcida','Desenvolvimento individual']){await tab(n);await page.waitForTimeout(60);let text=await page.locator('#view').innerText();if(!text||text.length<80)throw Error('Empty screen '+n);console.log('PASS render',n)}
+// Synthetic career only: exercise real sponsor negotiation and finance persistence.
+await tab('Patrocinadores');
+let sponsorBefore=await page.evaluate(()=>{const s=window.__managementQA.state();return {cash:s.money,ledger:s.financeLedger.length,contracts:s.sponsors.length}});
+await page.locator('[data-accept-sponsor="campo"]').click();
+await page.locator('.m11-sponsor-negotiation [data-term="annual"]').fill('8');
+await page.locator('.m11-sponsor-negotiation [data-term="signing"]').fill('0.4');
+await page.locator('.m11-sponsor-negotiation [data-term="top4"]').fill('1.2');
+await page.locator('.m11-sponsor-negotiation [data-term="title"]').fill('2.0');
+await page.locator('.m11-sponsor-negotiation [data-neg-accept]').click();
+let sponsorAfter=await page.evaluate(()=>{const s=window.__managementQA.state();return {cash:s.money,ledger:s.financeLedger,contracts:s.sponsors}});
+let sponsorAdded=sponsorAfter.ledger.length-sponsorBefore.ledger;let sponsorContract=sponsorAfter.contracts.find(x=>x.offerId==='campo');
+if(!sponsorContract||sponsorContract.annual!==8||sponsorContract.signing!==0.4||sponsorContract.top4!==1.2||sponsorContract.title!==2||sponsorAfter.contracts.length!==sponsorBefore.contracts+1||sponsorAdded!==1||Math.abs(sponsorAfter.cash-sponsorBefore.cash-0.4)>.00001||sponsorAfter.ledger[0].amount!==0.4||sponsorAfter.ledger[0].kind!=='Patrocínio')throw Error('Sponsor negotiation cash/ledger failed: '+JSON.stringify({sponsorBefore,sponsorAfter}));
+await page.reload({waitUntil:'load'});await page.waitForTimeout(700);await page.locator('#openCareersBtn').click();await page.locator('[data-enter-career]').first().click();
+let sponsorReload=await page.evaluate(()=>{const s=window.__managementQA.state();return {cash:s.money,ledger:s.financeLedger,contracts:s.sponsors}});
+if(JSON.stringify(sponsorReload)!==JSON.stringify(sponsorAfter))throw Error('Sponsor deal or finance did not survive save/reload '+JSON.stringify({sponsorAfter,sponsorReload}));
+console.log('PASS sponsor edited terms, one signing credit in cash and ledger, save/reload');
 await tab('Diretoria');let goal=await page.locator('.gm-goal').count();if(goal<3)throw Error('Board goals missing');
 await tab('Finanças');let balanceBefore=await page.evaluate(()=>window.__managementQA.state().money);await tab('Estádio');page.once('dialog',d=>d.accept());await page.locator('[data-gm-project="training"]').click();let projs=await page.evaluate(()=>({money:window.__managementQA.state().money,projects:window.__managementQA.state().facilityProjects.length}));if(projs.projects!==1||projs.money>=balanceBefore)throw Error('Facility project debit/state failed '+JSON.stringify(projs));console.log('PASS project start reduces cash and persists',projs);
 await tab('Estádio');let input=page.locator('#gmTicketPrice');await input.fill('35');await input.dispatchEvent('change');if(await page.evaluate(()=>window.__managementQA.state().ticketPrice)!==35)throw Error('Ticket setting not persisted');console.log('PASS ticket price persists');
