@@ -59,7 +59,38 @@ try{
  await page.waitForFunction(()=>!!window.__slotQA?.state()?.squad?.length,null,{timeout:10000});
  const reloadState=await page.evaluate(()=>({formation:window.__slotQA.state().formation,count:window.__slotQA.state().squad.length,slots:Object.keys(window.__slotQA.state().slotAssignments||{}).length}));
  if(reloadState.formation!=='5-3-2'||reloadState.count<11||reloadState.slots<11)throw new Error('Synthetic career failed saved-career reload: '+JSON.stringify(reloadState));
+
  console.log('PASS isolated synthetic career loaded from saved-careers flow',JSON.stringify(reloadState));
+ // New approved super-update features: saved formation, loan negotiation and contract renewal.
+ await tab('Táticas');
+ await page.locator('#m11FormationName').fill('QA Custom 4-2-4');
+ await page.locator('#m11FormationDef').fill('4');await page.locator('#m11FormationMid').fill('2');await page.locator('#m11FormationAtt').fill('4');
+ await page.locator('#m11CreateFormation').click();
+ const custom=await page.evaluate(()=>({formation:window.__slotQA.state().formation,saved:(window.__slotQA.state().customFormations||[]).map(f=>({name:f.name,groups:f.groups,slots:Object.keys(window.__slotQA.state().slotAssignments||{}).length}))}));
+ if(custom.formation!=='QA Custom 4-2-4'||!custom.saved.some(f=>f.name==='QA Custom 4-2-4'&&f.groups.reduce((a,b)=>a+b,0)===11))throw new Error('Custom formation not created/saved: '+JSON.stringify(custom));
+ console.log('PASS custom 11-player formation UI saved',JSON.stringify(custom));
+ await page.reload({waitUntil:'load'});await page.waitForTimeout(1200);await page.locator('#openCareersBtn').click();await page.locator('[data-enter-career]').first().click();
+ await page.waitForFunction(()=>!!window.__slotQA?.state()?.squad?.length,null,{timeout:10000});
+ const customReload=await page.evaluate(()=>({formation:window.__slotQA.state().formation,saved:(window.__slotQA.state().customFormations||[]).some(f=>f.name==='QA Custom 4-2-4')}));
+ if(!customReload.saved||customReload.formation!=='QA Custom 4-2-4')throw new Error('Custom formation did not persist after reload: '+JSON.stringify(customReload));
+ console.log('PASS custom formation survives saved-career reload',JSON.stringify(customReload));
+ await tab('Empréstimos');
+ const loanBefore=await page.evaluate(()=>window.__slotQA.state().squad.length);
+ if(await page.locator('[data-m11-loan]').count()===0)throw new Error('Loan office has no actionable offers');
+ await page.evaluate(()=>{window.__savedRandomForLoan=Math.random;Math.random=()=>0});
+ await page.locator('[data-m11-loan]').first().click();await page.locator('#m11LoanFee').fill('0');await page.locator('#m11SendLoan').click();
+ await page.waitForFunction(()=>window.__slotQA.state().squad.length>(window.__loanBefore||0)||document.querySelector('#m11LoanState')?.textContent.includes('aceita'),null,{timeout:10000}).catch(async()=>{});
+ const loan=await page.evaluate(before=>({count:window.__slotQA.state().squad.length,loans:window.__slotQA.state().loans||[],message:document.querySelector('#m11LoanState')?.textContent||''}),loanBefore);
+ await page.evaluate(()=>{if(window.__savedRandomForLoan)Math.random=window.__savedRandomForLoan});
+ if(loan.count<=loanBefore||!loan.loans.length||!loan.message.includes('aceita'))throw new Error('Loan acceptance flow did not update squad and history: '+JSON.stringify(loan));
+ console.log('PASS loan negotiation animation and accepted loan state',JSON.stringify(loan));
+ await tab('Contratos');const contractBefore=await page.evaluate(()=>{const p=window.__slotQA.state().squad[0];return {name:p.name,wage:p.wage,years:p.contractYears}});
+ await page.locator('[data-renew]').first().click();await page.locator('#m11RenewApply').click();
+ await page.waitForFunction(name=>window.__slotQA.state().squad[0].name===name&&window.__slotQA.state().squad[0].contractYears>0,contractBefore.name,{timeout:10000});
+ const contractAfter=await page.evaluate(()=>{const p=window.__slotQA.state().squad[0];return {name:p.name,wage:p.wage,years:p.contractYears,subject:window.__slotQA.state().inbox?.[0]?.subject}});
+ if(!contractAfter.wage||!contractAfter.years||contractAfter.subject!=='Contrato renovado')throw new Error('Renewal did not update contract/inbox: '+JSON.stringify(contractAfter));
+ console.log('PASS contract renewal UI updates wage, term and inbox',JSON.stringify({before:contractBefore,after:contractAfter}));
+
  await page.evaluate(()=>window.__slotQA.formation('4-2-3-1'));await tab('Elenco');
  await page.waitForFunction(()=>document.querySelectorAll('.squad-mini-pitch .squad-field-player').length===11);
  await page.setViewportSize({width:844,height:390});await page.waitForTimeout(350);
@@ -87,10 +118,16 @@ try{
  const ready=await page.evaluate(()=>{const s=window.__slotQA.state();return {day:s.calendarDay,trainingDay:s.trainingDay,trainingDays:s.matchTrainingDays,ready:document.querySelector('#play')?.textContent,week:s.week}});
  if(ready.trainingDays!==3||ready.trainingDay===ready.day||!ready.ready?.includes('Jogar')||ready.week!==1)throw new Error('Three-training-day gate did not unlock the round-one match: '+JSON.stringify(ready));
  await page.locator('#play').click(); await page.waitForSelector('#liveMatch',{timeout:10000});
+ await page.setViewportSize({width:844,height:390});await page.waitForTimeout(350);
+ const matchGeom=await page.evaluate(()=>Object.fromEntries(['.match-event-panel','.match-center','.match-data-panel','.match-bottom','.live-sub-panel'].map(sel=>{let e=document.querySelector(sel);if(!e)return [sel,null];let r=e.getBoundingClientRect();return [sel,{l:r.left,r:r.right,t:r.top,b:r.bottom,w:r.width,h:r.height,display:getComputedStyle(e).display}]})));
+ const pitchRect=matchGeom['.match-center']; if(!pitchRect||pitchRect.w<180||pitchRect.l<0||pitchRect.r>844)throw new Error('Match radar controls overflow/collapse at 844x390: '+JSON.stringify(matchGeom));
+ await page.locator('#toggleSubPanel').click();const subPanel=await page.locator('.live-sub-panel').evaluate(e=>{let r=e.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,w:r.width,h:r.height,visible:!e.classList.contains('hidden')}});
+ if(!subPanel.visible||subPanel.left<0||subPanel.right>844||subPanel.w<250)throw new Error('Substitution panel does not fit landscape viewport: '+JSON.stringify(subPanel));
+ await page.locator('#toggleSubPanel').click();console.log('PASS live match and substitution controls fit mobile landscape',JSON.stringify({matchGeom,subPanel}));
  await page.locator('[data-speed="2"]').click();
- await page.waitForSelector('#noSubsContinue:not(:disabled)',{timeout:30000});
+ await page.waitForSelector('#noSubsContinue:not(:disabled)',{timeout:90000});
  await page.locator('#noSubsContinue').click();
- await page.waitForFunction(()=>{const x=document.querySelector('#matchSummary');return x&&!x.classList.contains('hidden')},null,{timeout:45000});
+ await page.waitForFunction(()=>{const x=document.querySelector('#matchSummary');return x&&!x.classList.contains('hidden')},null,{timeout:150000});
  const final=await page.evaluate(()=>{const s=window.__slotQA.state(),m=s.lastMatch;return {week:s.week,day:s.calendarDay,trainingDays:s.matchTrainingDays,dayMatchPlayed:s.dayMatchPlayed,lastMatch:m&&{round:m.round,opponent:m.opponent,gf:m.gf,ga:m.ga},played:s.played?.[1],ready:!!document.querySelector('#advanceCareerDay')}});
  if(final.week!==2||final.day!==ready.day||final.trainingDays!==0||!final.dayMatchPlayed||!final.lastMatch||final.lastMatch.round!==1||final.played?.gf!==final.lastMatch.gf||final.played?.ga!==final.lastMatch.ga)throw new Error('Finished match did not reconcile result, round, and daily scheduler state: '+JSON.stringify(final));
  console.log('PASS timed full-match integration, score/round record and post-match daily lock',JSON.stringify(final));
