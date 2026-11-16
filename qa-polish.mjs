@@ -74,6 +74,58 @@ try{
  const customReload=await page.evaluate(()=>({formation:window.__slotQA.state().formation,saved:(window.__slotQA.state().customFormations||[]).some(f=>f.name==='QA Custom 4-2-4')}));
  if(!customReload.saved||customReload.formation!=='QA Custom 4-2-4')throw new Error('Custom formation did not persist after reload: '+JSON.stringify(customReload));
  console.log('PASS custom formation survives saved-career reload',JSON.stringify(customReload));
+
+ // Youth academy UI and persistent lifecycle.
+ await tab('Base de jovens');await page.waitForSelector('[data-youth-sign]');
+ const youthBefore=await page.evaluate(()=>({money:window.__futureQA.state().money,count:window.__futureQA.state().youthPlayers.length,prospects:window.__futureQA.state().youthCandidates.length}));
+ await page.locator('[data-youth-sign]').first().click();
+ const youthSigned=await page.evaluate(()=>({money:window.__futureQA.state().money,count:window.__futureQA.state().youthPlayers.length,prospects:window.__futureQA.state().youthCandidates.length,name:window.__futureQA.state().youthPlayers[0]?.name}));
+ if(youthSigned.count!==youthBefore.count+1||youthSigned.prospects!==youthBefore.prospects-1||youthSigned.money>=youthBefore.money)throw new Error('Youth signing UI did not persist, charge cost and update counts: '+JSON.stringify({youthBefore,youthSigned}));
+ console.log('PASS youth academy prospect signing UI and career state',JSON.stringify({youthBefore,youthSigned}));
+ await page.locator('[data-youth-train="0"]').click();
+ const youthTrained=await page.evaluate(()=>({xp:window.__futureQA.state().youthPlayers[0]?.xp,rating:window.__futureQA.state().youthPlayers[0]?.rating}));
+ if(youthTrained.xp!==1)throw new Error('Youth individual session did not add XP: '+JSON.stringify(youthTrained));
+ await page.locator('[data-youth-promote="0"]').click();
+ const youthPromoted=await page.evaluate(n=>({squad:window.__futureQA.state().squad.some(p=>p.name===n&&p.youthProduct),base:window.__futureQA.state().youthPlayers.length,graduates:window.__futureQA.state().youthGraduates.length}),youthSigned.name);
+ if(!youthPromoted.squad||youthPromoted.base!==youthBefore.count||youthPromoted.graduates!==1)throw new Error('Youth promotion flow did not move player to senior squad/history: '+JSON.stringify(youthPromoted));
+ console.log('PASS individual youth training and promotion to first team',JSON.stringify(youthPromoted));
+ await page.reload({waitUntil:'load'});await page.waitForTimeout(1200);await page.locator('#openCareersBtn').click();await page.locator('[data-enter-career]').first().click();
+ if(!await page.evaluate(n=>window.__futureQA.state().youthGraduates.some(x=>x.name===n),youthSigned.name))throw new Error('Youth promotion history did not persist on career reload');
+ console.log('PASS youth promotion history survives career reload');
+ // Medical reporting, rest, injury-treatment and readiness.
+ await tab('Departamento médico');
+ const medName=await page.evaluate(()=>window.__futureQA.state().squad[0].name);
+ await page.evaluate(n=>window.__futureQA.createInjury(n,4),medName);await tab('Departamento médico');
+ if(!await page.locator('[data-med-treat]').count())throw new Error('Medical case not rendered in department');
+ const medBefore=await page.evaluate(()=>{let s=window.__futureQA.state();let c=s.medicalCases.find(x=>!x.closed);return {days:c.daysRemaining,energy:s.squad.find(x=>x.name===c.name)?.energy}});
+ await page.locator('[data-med-treat]').first().click();
+ const medAfter=await page.evaluate(()=>{let s=window.__futureQA.state();let c=s.medicalCases.find(x=>x.id.startsWith('qa-med-'));return {days:c.daysRemaining,treated:c.treated,cash:s.money}});
+ if(medAfter.days!==medBefore.days-2||!medAfter.treated)throw new Error('Medical treatment UI did not alter recovery/cash: '+JSON.stringify({medBefore,medAfter}));
+ console.log('PASS injury treatment reduces recovery estimate',JSON.stringify({medBefore,medAfter}));
+ const restPlayer=await page.evaluate(()=>{let s=window.__futureQA.state(),p=s.squad[1];p.energy=40;return p.id||p.name});await tab('Departamento médico');
+ await page.locator(`[data-med-rest="${restPlayer}"]`).click();
+ const rested=await page.evaluate(k=>{let p=window.__futureQA.state().squad.find(x=>String(x.id||x.name)===k);return {energy:p.energy,role:p.role}},restPlayer);
+ if(rested.energy<58||rested.role==='titular')throw new Error('Rest prescription failed to restore/de-select starter: '+JSON.stringify(rested));
+ await page.evaluate(()=>{const c=window.__futureQA.state().medicalCases.find(x=>x.id.startsWith('qa-med-'));c.daysRemaining=1;window.__futureQA.medicalDay()});
+ const recovered=await page.evaluate(()=>{let s=window.__futureQA.state();let c=s.medicalCases.find(x=>x.id.startsWith('qa-med-'));return {closed:c.closed,history:s.medicalHistory.length}});
+ if(!recovered.closed||!recovered.history)throw new Error('Medical calendar recovery did not close case/history: '+JSON.stringify(recovered));
+ console.log('PASS medical rest and calendar recovery lifecycle',JSON.stringify({rested,recovered}));
+ await page.reload({waitUntil:'load'});await page.waitForTimeout(1200);await page.locator('#openCareersBtn').click();await page.locator('[data-enter-career]').first().click();
+ if(!await page.evaluate(()=>window.__futureQA.state().medicalHistory.some(x=>x.name)))throw new Error('Medical history did not persist on saved-career reload');
+ console.log('PASS medical history persists with saved career');
+ // Scout watching, confidence growth and persisted reports.
+ await tab('Olheiros');const scoutCount=await page.locator('[data-scout-watch]').count();if(!scoutCount)throw new Error('Scout list has no candidates');
+ const scoutName=await page.locator('[data-scout-watch]').first().getAttribute('data-scout-watch');
+ await page.locator('[data-scout-watch]').first().click();
+ const scoutAdded=await page.evaluate(n=>({target:window.__futureQA.state().scoutingTargets.find(x=>x.name===n),report:window.__futureQA.state().scoutingReports.find(x=>x.name===n)}),scoutName);
+ if(!scoutAdded.target||!scoutAdded.report)throw new Error('Scout follow action did not add a report target: '+JSON.stringify(scoutAdded));
+ await page.locator(`[data-scout-observe="${scoutName}"]`).click();
+ const scouting=await page.evaluate(n=>{let r=window.__futureQA.scoutReport(window.__futureQA.state().scoutingTargets.find(x=>x.name===n));return {observations:r.observations,confidence:r.confidence,history:window.__futureQA.state().scoutingReports.find(x=>x.name===n).history.length}},scoutName);
+ if(scouting.observations!==1||scouting.history<2||scouting.confidence<=scoutAdded.report.confidence)throw new Error('Scout observation failed to grow report confidence: '+JSON.stringify({scoutAdded,scouting}));
+ console.log('PASS scouting watchlist and observation confidence',JSON.stringify(scouting));
+ await page.reload({waitUntil:'load'});await page.waitForTimeout(1200);await page.locator('#openCareersBtn').click();await page.locator('[data-enter-career]').first().click();
+ if(!await page.evaluate(n=>(window.__futureQA.state().scoutingTargets||[]).some(x=>x.name===n),scoutName))throw new Error('Scouting report did not persist after career reload');
+ console.log('PASS scout watchlist survives career reload');
  await tab('Empréstimos');
  const loanBefore=await page.evaluate(()=>window.__slotQA.state().squad.length);
  if(await page.locator('[data-m11-loan]').count()===0)throw new Error('Loan office has no actionable offers');
