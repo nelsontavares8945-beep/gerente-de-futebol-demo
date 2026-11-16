@@ -13,7 +13,7 @@ jobs:
         with:
           ref: 63afd4a8eb1f4210e2dc9818f5c928c5ff939312
           path: candidate
-      - name: Verify candidate
+      - name: Verify exact candidate
         run: |
           set -eu
           test "$(git -C candidate rev-parse HEAD)" = 63afd4a8eb1f4210e2dc9818f5c928c5ff939312
@@ -48,7 +48,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10.2'
-      - name: Build isolated debug app; no release
+      - name: Build isolated debug app, artifact only
         run: |
           set -eu
           cat > android/settings.gradle <<'GRADLE'
@@ -74,18 +74,7 @@ jobs:
           $ANDROID_HOME/build-tools/35.0.0/aapt dump badging "$apk" | grep -F "br.com.gerentefutebol.gpulocktest"
           $ANDROID_HOME/build-tools/35.0.0/apksigner verify "$apk"; sha256sum "$apk" > scratch/apk.sha256
       - run: python3 -m pip install -q websocket-client
-      - name: Android 10 UI smoke with synthetic career and live match
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 29
-          target: default
-          arch: x86
-          profile: pixel_2
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          disable-animations: true
-          script: |
-            bash -c 'set -e; adb install android/app/build/outputs/apk/debug/app-debug.apk; adb logcat -c; adb shell am start -W -n br.com.gerentefutebol.gpulocktest/br.com.gerentefutebol.MainActivity; sleep 18; adb forward tcp:9222 localabstract:webview_devtools_remote_$(adb shell pidof br.com.gerentefutebol.gpulocktest | tr -d "\r"); python3 smoke.py; adb shell screencap -p /sdcard/qa.png; adb pull /sdcard/qa.png scratch/android10.png; adb logcat -d -s AndroidRuntime:E M11QA:I chromium:E > scratch/logcat.txt; ! grep -E "FATAL EXCEPTION|Uncaught (SyntaxError|ReferenceError|TypeError)" scratch/logcat.txt'
-      - name: UI smoke script
+      - name: Prepare emulator interaction smoke
         run: |
           cat > smoke.py <<'PY'
           import json,time,itertools,urllib.request,websocket
@@ -98,7 +87,7 @@ jobs:
                       if r.get('result',{}).get('exceptionDetails'):raise Exception(r['result']['exceptionDetails'])
                       return r['result']['result'].get('value')
           def ck(e,n):
-              v=js(e);print(('PASS' if v else 'FAIL'),n,v,flush=True)
+              v=js(e);print(('PASS' if v else 'FAIL'),n,flush=True)
               if not v:raise AssertionError(n)
           def wait(e,n):
               for _ in range(100):
@@ -109,32 +98,45 @@ jobs:
           def tab(n):
               if js("!document.querySelector('#nav').classList.contains('open')"):cl('#menuToggle')
               cl('[data-tab='+json.dumps(n)+']');wait('window.currentTab==='+json.dumps(n),'screen '+n)
-          wait("document.querySelector('#careerHome')&&!document.querySelector('#careerHome').classList.contains('hidden')",'Android app launches')
-          ck("JSON.parse(localStorage.getItem('gdf-career-slots-v1')||'[]').length===0",'fresh emulator has no career data')
+          wait("document.querySelector('#careerHome')&&!document.querySelector('#careerHome').classList.contains('hidden')",'app launches')
+          ck("JSON.parse(localStorage.getItem('gdf-career-slots-v1')||'[]').length===0",'fresh emulator has no saved career')
           cl('#createCareerBtn')
           for s in ['#cwCountryNext','#cwDivisionNext','#start']:cl(s)
           wait("!document.querySelector('#app').classList.contains('hidden')",'synthetic career starts')
-          ck("JSON.parse(localStorage.getItem('gdf-career-slots-v1')||'[]').length===1",'one synthetic career persisted')
+          ck("JSON.parse(localStorage.getItem('gdf-career-slots-v1')||'[]').length===1",'only one synthetic save')
           for n,s,m in [('Base de jovens','[data-youth-sign]','.m11-academy-shell'),('Departamento médico','[data-med-rest]','.m11-academy-shell'),('Olheiros','[data-network-watch]','.m11-academy-shell'),('Finanças','.gm-shell','.gm-ledger'),('Diretoria','.gm-shell','.gm-goal'),('Desenvolvimento individual','.gm-shell','#gmIndividualFocus')]:
-              tab(n);ck('!!document.querySelector('+json.dumps(m)+')','candidate screen '+n)
+              tab(n);ck('!!document.querySelector('+json.dumps(m)+')','new screen '+n)
               if s.startswith('['):cl(s)
-          tab('Treino');cl('#openTrainingStudio');ck("document.querySelectorAll('#trainingLineup .training-player').length===11",'training roster')
+          tab('Treino');cl('#openTrainingStudio');ck("document.querySelectorAll('#trainingLineup .training-player').length===11",'training lineup')
           cl('[data-player-pick="attack"]');cl('[data-select-player]')
           for day in range(3):
               if not js("document.querySelector('#trainingStudio')"):cl('#openTrainingStudio')
-              cl('#runTraining');wait("document.querySelector('#runTraining').textContent.indexOf('concluído')>=0",'training gameplay completes')
+              cl('#runTraining');wait("document.querySelector('#runTraining').textContent.indexOf('concluído')>=0",'training session completes')
               cl('#closeTraining')
               if day<2:tab('Visão geral');cl('#advanceCareerDay');tab('Treino')
-          tab('Visão geral');cl('#advanceCareerDay');wait('window.__slotQA.state().matchTrainingDays>=3&&window.__slotQA.state().trainingDay!==window.__slotQA.state().calendarDay','training unlocks match')
-          tab('Visão geral');cl('#play');wait("!!document.querySelector('#livePitch')",'live match screen')
-          ck("document.querySelectorAll('#livePitch .match-player-token').length===22",'live match includes both teams')
-          cl('[data-speed="2"]');ck("document.querySelector('[data-speed=\"2\"]').classList.contains('active')",'match speed control')
-          cl('[data-match-tab="lineup"]');ck("document.querySelector('#matchDataContent').textContent.length>0",'match lineup interaction')
-          cl('#livePitch .match-player-token');ck("!document.querySelector('#playerInspect').classList.contains('hidden')",'tap opens live player inspector')
-          cl('#matchExit');wait("!document.querySelector('#liveMatch')",'exit match')
-          ck("JSON.parse(localStorage.getItem('gdf-career-slots-v1')||'[]').length===1",'only synthetic save persists')
-          print('PASS Android 10 UI smoke: new features, three training days, calendar and live gameplay',flush=True)
+          tab('Visão geral');cl('#advanceCareerDay');wait('window.__slotQA.state().matchTrainingDays>=3&&window.__slotQA.state().trainingDay!==window.__slotQA.state().calendarDay','training unlocks game')
+          tab('Visão geral');cl('#play');wait("!!document.querySelector('#livePitch')",'live game opens')
+          ck("document.querySelectorAll('#livePitch .match-player-token').length===22",'live match players render')
+          cl('[data-speed="2"]');ck("document.querySelector('[data-speed=\"2\"]').classList.contains('active')",'speed control interaction')
+          cl('[data-match-tab="lineup"]');ck("document.querySelector('#matchDataContent').textContent.length>0",'lineup panel interaction')
+          cl('#livePitch .match-player-token');ck("!document.querySelector('#playerInspect').classList.contains('hidden')",'tapped player inspector opens')
+          cl('#matchExit');wait("!document.querySelector('#liveMatch')",'exit live game')
+          ck("JSON.parse(localStorage.getItem('gdf-career-slots-v1')||'[]').length===1",'only synthetic career persists')
+          print('PASS Android 10 UI gameplay smoke',flush=True)
           PY
+      - name: Enable KVM for emulator
+        run: echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules && sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+      - name: Android 10 emulator gameplay smoke
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          target: default
+          arch: x86
+          profile: pixel_2
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            bash -c 'set -e; adb install android/app/build/outputs/apk/debug/app-debug.apk; adb logcat -c; adb shell am start -W -n br.com.gerentefutebol.gpulocktest/br.com.gerentefutebol.MainActivity; sleep 18; adb forward tcp:9222 localabstract:webview_devtools_remote_$(adb shell pidof br.com.gerentefutebol.gpulocktest | tr -d "\r"); python3 smoke.py; adb shell screencap -p /sdcard/qa.png; adb pull /sdcard/qa.png scratch/android10.png; adb logcat -d -s AndroidRuntime:E M11QA:I chromium:E > scratch/logcat.txt; ! grep -E "FATAL EXCEPTION|Uncaught (SyntaxError|ReferenceError|TypeError)" scratch/logcat.txt'
       - if: always()
         uses: actions/upload-artifact@v4
         with:
