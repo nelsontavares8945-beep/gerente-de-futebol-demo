@@ -115,9 +115,9 @@ try{
  if(!await page.evaluate(()=>window.__futureQA.state().medicalHistory.some(x=>x.name)))throw new Error('Medical history did not persist on saved-career reload');
  console.log('PASS medical history persists with saved career');
  // Scout watching, confidence growth and persisted reports.
- await tab('Olheiros');const scoutCount=await page.locator('[data-scout-watch]').count();if(!scoutCount)throw new Error('Scout list has no candidates');
- const scoutName=await page.locator('[data-scout-watch]').first().getAttribute('data-scout-watch');
- await page.locator('[data-scout-watch]').first().click();
+ await tab('Olheiros');const scoutCount=await page.locator('[data-network-watch]').count();if(!scoutCount)throw new Error('Scout list has no candidates');
+ const scoutName=await page.locator('[data-network-watch]').first().getAttribute('data-network-watch');
+ await page.locator('[data-network-watch]').first().click();
  const scoutAdded=await page.evaluate(n=>({target:window.__futureQA.state().scoutingTargets.find(x=>x.name===n),report:window.__futureQA.state().scoutingReports.find(x=>x.name===n)}),scoutName);
  if(!scoutAdded.target||!scoutAdded.report)throw new Error('Scout follow action did not add a report target: '+JSON.stringify(scoutAdded));
  await page.locator(`[data-scout-observe="${scoutName}"]`).click();
