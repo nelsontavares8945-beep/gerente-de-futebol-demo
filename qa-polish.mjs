@@ -77,12 +77,12 @@ try{
  await tab('Empréstimos');
  const loanBefore=await page.evaluate(()=>window.__slotQA.state().squad.length);
  if(await page.locator('[data-m11-loan]').count()===0)throw new Error('Loan office has no actionable offers');
- await page.evaluate(()=>{window.__savedRandomForLoan=Math.random;Math.random=()=>0});
+ await page.evaluate(before=>{window.__loanBefore=before;window.__savedRandomForLoan=Math.random;Math.random=()=>0;const st=window.__slotQA.state();st.inbox=st.inbox||[];st.log=st.log||[];st.loans=st.loans||[];st.transfers=st.transfers||[]},loanBefore);
  await page.locator('[data-m11-loan]').first().click();await page.locator('#m11LoanFee').fill('0');await page.locator('#m11SendLoan').click();
- await page.waitForFunction(()=>window.__slotQA.state().squad.length>(window.__loanBefore||0)||document.querySelector('#m11LoanState')?.textContent.includes('aceita'),null,{timeout:10000}).catch(async()=>{});
+ await page.waitForTimeout(2000);await page.waitForFunction(before=>{const state=document.querySelector('#m11LoanState')?.textContent||'';return window.__slotQA.state().squad.length>before||state.includes('aceita')||state.includes('recusada')},loanBefore,{timeout:10000});
  const loan=await page.evaluate(before=>({count:window.__slotQA.state().squad.length,loans:window.__slotQA.state().loans||[],message:document.querySelector('#m11LoanState')?.textContent||''}),loanBefore);
  await page.evaluate(()=>{if(window.__savedRandomForLoan)Math.random=window.__savedRandomForLoan});
- if(loan.count<=loanBefore||!loan.loans.length||!loan.message.includes('aceita'))throw new Error('Loan acceptance flow did not update squad and history: '+JSON.stringify(loan));
+ if(loan.count<=loanBefore||!loan.loans.length||!loan.message.includes('aceita'))throw new Error('Loan acceptance flow did not update squad and history: '+JSON.stringify({loan,errors}));
  console.log('PASS loan negotiation animation and accepted loan state',JSON.stringify(loan));
  await tab('Contratos');const contractBefore=await page.evaluate(()=>{const p=window.__slotQA.state().squad[0];return {name:p.name,wage:p.wage,years:p.contractYears}});
  await page.locator('[data-renew]').first().click();await page.locator('#m11RenewApply').click();
