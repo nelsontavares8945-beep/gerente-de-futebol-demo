@@ -30,7 +30,7 @@ try{
  const collides=a=>a.some((x,i)=>a.some((y,j)=>j>i&&x.left<y.right&&x.right>y.left&&x.top<y.bottom&&x.bottom>y.top));
  if(collides(squadBoxes))throw new Error('Elenco pitch has overlapping player labels');
  console.log('PASS Elenco 4-2-3-1: 11 slot-linked labels with no overlap at 1024x768');
- await page.evaluate(()=>{window.currentTab='Treino';render()});await page.locator('#openTrainingStudio').click();
+ await tab('Treino');await page.locator('#openTrainingStudio').click();
  await page.waitForSelector('#trainingPitch .training-player-token');
  const trainingBoxes=await page.locator('#trainingPitch .training-player-token').evaluateAll(xs=>xs.map(x=>{let r=x.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,slot:x.dataset.slotToken,id:x.dataset.playerId,label:x.querySelector('b')?.textContent}}));
  if(trainingBoxes.length!==11||new Set(trainingBoxes.map(x=>x.id)).size!==11||trainingBoxes.some(x=>!x.slot||!x.label))throw new Error('Training pitch does not have 11 distinct slot-linked labeled players');
