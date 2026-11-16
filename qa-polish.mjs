@@ -45,7 +45,10 @@ try{
  console.log('PASS gradual technical training gains '+p.name+' GER '+p.rating+'→'+grown.rating+' XP remainder '+grown.xp);
  await page.locator('#closeTraining').click();
  for(const form of ['4-3-3','4-4-2','3-4-3','3-5-2','4-2-3-1','4-1-4-1','5-3-2']){
-  await page.evaluate(f=>window.__slotQA.formation(f),form);
+  await tab('Táticas');
+  await page.locator(`[data-formation="${form}"]`).click();
+  await tab('Elenco');
+  await page.waitForFunction(()=>document.querySelectorAll('.squad-mini-pitch .squad-field-player').length===11,null,{timeout:10000});
   const n=await page.locator('.squad-mini-pitch .squad-field-player').count();
   if(n!==11)throw new Error(`${form} rendered ${n} field players`);
  }
