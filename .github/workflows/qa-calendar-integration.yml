@@ -41,7 +41,7 @@ jobs:
           print(f'HTML parsed; {parser.scripts} script tags; inline JS syntax passed')
           PY
       - name: Run integrated browser UI smoke
-        run: node .github/qa/qa-calendar-integration.mjs
+        run: node qa-calendar-integration.mjs
       - name: Save smoke screenshot
         if: always()
         uses: actions/upload-artifact@v4
