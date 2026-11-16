@@ -12,7 +12,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: main
-      - name: Checkout source artwork and smoke test from verified feature branch
+      - name: Checkout verified smoke test/artwork
         uses: actions/checkout@v4
         with:
           ref: feature-slot-assignment-2026-11-15
@@ -63,7 +63,7 @@ jobs:
           cp feature-source/assets/menu-mestre-11.png android/app/src/main/assets/assets/menu-mestre-11.png
           cat > android/settings.gradle <<'GRADLE'
           pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
-          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
+          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral(); gradlePluginPortal() } }
           rootProject.name = 'Mestre11GpuLock'
           include ':app'
           GRADLE
@@ -119,7 +119,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: |
-            bash -c 'set -e; adb install android/app/build/outputs/apk/debug/app-debug.apk && adb logcat -c && adb shell am start -W -n br.com.gerentefutebol.gpulocktest/br.com.gerentefutebol.MainActivity && sleep 15 && adb shell pidof br.com.gerentefutebol.gpulocktest && adb shell dumpsys activity activities | grep -F br.com.gerentefutebol.MainActivity && adb forward tcp:9222 localabstract:webview_devtools_remote_$(adb shell pidof br.com.gerentefutebol.gpulocktest | tr -d "\r") && python3 -m pip install -q websocket-client && python3 feature-source/Mestre11-projeto/branch-gdf-apk-safe-test-f2a2f5a/smoke-calendario.py && adb logcat -d -s AndroidRuntime:E GDFWeb:I chromium:E > android-runtime.log && ! grep -E "FATAL EXCEPTION|Uncaught (SyntaxError|ReferenceError|TypeError)" android-runtime.log'
+            bash -c 'set -e; adb install android/app/build/outputs/apk/debug/app-debug.apk && adb logcat -c && adb shell am start -W -n br.com.gerentefutebol.gpulocktest/br.com.gerentefutebol.MainActivity && sleep 15 && adb shell pidof br.com.gerentefutebol.gpulocktest && adb shell dumpsys activity activities | grep -F br.com.gerentefutebol.MainActivity && adb forward tcp:9222 localabstract:webview_devtools_remote_$(adb shell pidof br.com.gerentefutebol.gpulocktest | tr -d "\r") && python3 -m pip install -q websocket-client && python3 feature-source/smoke-calendario.py && adb logcat -d -s AndroidRuntime:E GDFWeb:I chromium:E > android-runtime.log && ! grep -E "FATAL EXCEPTION|Uncaught (SyntaxError|ReferenceError|TypeError)" android-runtime.log'
       - uses: actions/upload-artifact@v4
         with:
           name: Mestre11-Calendar-Integrated-QA-AndroidDebug
