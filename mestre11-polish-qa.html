@@ -1118,7 +1118,8 @@ function mestreOnzeBoot(){
  window.setTimeout(()=>{splash.hidden=true;root.hidden=true;showCareerHome()},160);
 }
 mestreOnzeBoot();
-read();if(S&&Array.isArray(S.squad)){gdfNormalizeSquad();m11EnsureSlots()}render();, exposed solely with explicit query flag.
+read();if(S&&Array.isArray(S.squad)){gdfNormalizeSquad();m11EnsureSlots()}render();
+// QA-only controls in the game closure, exposed solely with explicit query flag.
 if(new URLSearchParams(location.search).has('qaSlots'))window.__slotQA={schema:()=>m11SlotSchema(),ensure:()=>m11EnsureSlots(),assign:(slot,id)=>m11Assign(slot,id),state:()=>S,formation:f=>{S.formation=f;m11EnsureSlots();storeActiveCareer()},market:()=>available(),marketFiltered:filter=>{let prior=marketClub;marketClub=filter;let rows=available();marketClub=prior;return rows},curatedRating:name=>m11CuratedPlayerRating(name),trainingXP:(name,xp)=>{let p=S.squad.find(x=>x.name===name);if(p)p.trainingXP=xp}};
 })();</script><script id="gdf-next-controls-js">
 /* GDF-NEXT-CONTROLS v1 */
