@@ -91,6 +91,7 @@ try{
  const contractAfter=await page.evaluate(()=>{const p=window.__slotQA.state().squad[0];return {name:p.name,wage:p.wage,years:p.contractYears,subject:window.__slotQA.state().inbox?.[0]?.subject}});
  if(!contractAfter.wage||!contractAfter.years||contractAfter.subject!=='Contrato renovado')throw new Error('Renewal did not update contract/inbox: '+JSON.stringify(contractAfter));
  console.log('PASS contract renewal UI updates wage, term and inbox',JSON.stringify({before:contractBefore,after:contractAfter}));
+ await page.locator('#m11RenewCancel').click();await page.waitForSelector('.m11-proposal-modal',{state:'detached'});
 
  await page.evaluate(()=>window.__slotQA.formation('4-2-3-1'));await tab('Elenco');
  await page.waitForFunction(()=>document.querySelectorAll('.squad-mini-pitch .squad-field-player').length===11);
