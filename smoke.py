@@ -42,12 +42,14 @@ def main():
    if js(x):print('PASS',name,flush=True);return
    time.sleep(.5)
   raise AssertionError(name)
- def click(sel):ck('!!document.querySelector('+json.dumps(sel)+')','found '+sel);js('document.querySelector('+json.dumps(sel)+').click()');time.sleep(.5)
+ def click(sel):
+  wait('!!document.querySelector('+json.dumps(sel)+')','found '+sel)
+  js('document.querySelector('+json.dumps(sel)+').click()');time.sleep(.8)
  try:
   wait("document.querySelector('#careerHome')&&!document.querySelector('#careerHome').classList.contains('hidden')",'app and career center opened (no anniversary splash)')
   ck("document.querySelector('.brand') && document.querySelector('.brand').textContent.includes('MESTRE 11')",'page brand')
   js("localStorage.setItem('__qa_marker','persist-me')")
-  click('#createCareerBtn');click('#cwCountryNext');click('#cwDivisionNext');click('#start')
+  click('#createCareerBtn');wait("document.querySelector('#setup')&&!document.querySelector('#setup').classList.contains('hidden')",'wizard shown');click('#cwCountryNext');click('#cwDivisionNext');click('#start')
   wait("!document.querySelector('#app').classList.contains('hidden')",'career start')
   wait("document.querySelector('#nav')&&document.querySelector('#nav').querySelector('[data-tab]')",'main navigation')
   ck("document.querySelector('#nav').innerText.includes('Visão')",'overview nav present')
