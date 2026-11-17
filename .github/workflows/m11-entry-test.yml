@@ -1,0 +1,130 @@
+name: Android 10 - Mestre 11 entry-screen QA
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  android10:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mestre11-tela-inicial-qa-2026-11-17
+      - name: Verify candidate and prepare app
+        run: |
+          set -eu
+          test "$(sha256sum mestre11-tela-inicial-candidata.html | cut -d' ' -f1)" = d18729a90ce7508ac1e17e64868dff8393832bf7ca519eace0aca25e9dcf0298
+          mkdir -p android/app/src/main/assets android/app/src/main/java/br/com/gerentefutebol android/app/src/main/res/drawable scratch
+          cp mestre11-tela-inicial-candidata.html android/app/src/main/assets/index.html
+          cp icon-192.png android/app/src/main/res/drawable/icon.png
+          echo 'candidate sha256 d18729a90ce7508ac1e17e64868dff8393832bf7ca519eace0aca25e9dcf0298' > scratch/provenance.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Transpile inline JavaScript for Android 10 WebView
+        run: |
+          npm install --no-save esbuild@0.25.0
+          python3 - <<'PY'
+          import re,pathlib,subprocess,tempfile,hashlib
+          p=pathlib.Path('android/app/src/main/assets/index.html'); h=p.read_text(); n=0
+          def f(m):
+              global n
+              if not m.group(2).strip() or re.search(r'\bsrc\s*=',m.group(1),re.I): return m.group(0)
+              with tempfile.TemporaryDirectory() as d:
+                  a=pathlib.Path(d)/'a.js'; b=pathlib.Path(d)/'b.js'; a.write_text(m.group(2))
+                  subprocess.run(['npx','--no-install','esbuild',str(a),'--target=chrome75','--outfile='+str(b)],check=True,stdout=subprocess.DEVNULL); out=b.read_text()
+              n+=1; return m.group(1)+out+m.group(3)
+          h=re.sub(r'(<script\b[^>]*>)(.*?)(</script\s*>)',f,h,flags=re.I|re.S); assert n>=2,n; p.write_text(h)
+          pathlib.Path('scratch/transpiled.sha256').write_text(hashlib.sha256(h.encode()).hexdigest()+'\n'); print('transpiled inline scripts:',n)
+          PY
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Build isolated debug test app
+        run: |
+          set -eu
+          cat > android/settings.gradle <<'GRADLE'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
+          rootProject.name='M11QA'; include ':app'
+          GRADLE
+          echo "plugins { id 'com.android.application' version '8.6.1' apply false }" > android/build.gradle
+          cat > android/app/build.gradle <<'GRADLE'
+          plugins { id 'com.android.application' }
+          android { namespace 'br.com.gerentefutebol'; compileSdk 35; defaultConfig { applicationId 'br.com.gerentefutebol.entrydemo'; minSdk 23; targetSdk 28; versionCode 64; versionName 'entry-screen-qa' } }
+          GRADLE
+          cat > android/app/src/main/AndroidManifest.xml <<'XML'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android"><uses-permission android:name="android.permission.INTERNET"/><application android:label="Mestre 11 QA" android:icon="@drawable/icon" android:theme="@android:style/Theme.Material.NoActionBar" android:hardwareAccelerated="true" android:allowBackup="false"><activity android:name="br.com.gerentefutebol.MainActivity" android:exported="true" android:screenOrientation="landscape"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity></application></manifest>
+          XML
+          cat > android/app/src/main/java/br/com/gerentefutebol/MainActivity.java <<'JAVA'
+          package br.com.gerentefutebol;
+          import android.app.*;import android.os.*;import android.webkit.*;import android.view.*;
+          public class MainActivity extends Activity { public void onCreate(Bundle b){super.onCreate(b);getWindow().getDecorView().setSystemUiVisibility(5894);WebView w=new WebView(this);w.getSettings().setJavaScriptEnabled(true);w.getSettings().setDomStorageEnabled(true);w.setLayerType(View.LAYER_TYPE_HARDWARE,null);WebView.setWebContentsDebuggingEnabled(true);w.setWebChromeClient(new WebChromeClient(){public boolean onConsoleMessage(ConsoleMessage m){android.util.Log.i("M11QA",m.message());return true;}});w.setWebViewClient(new WebViewClient(){public WebResourceResponse shouldInterceptRequest(WebView v,WebResourceRequest r){if("game.gerentefutebol.local".equals(r.getUrl().getHost()))try{return new WebResourceResponse("text/html","UTF-8",getAssets().open("index.html"));}catch(Exception e){}return super.shouldInterceptRequest(v,r);}});setContentView(w);w.loadUrl("https://game.gerentefutebol.local/index.html?qaSlots");} }
+          JAVA
+          gradle -p android --no-daemon assembleDebug
+          apk=android/app/build/outputs/apk/debug/app-debug.apk; test -s "$apk"
+          $ANDROID_HOME/build-tools/35.0.0/aapt dump badging "$apk" | grep -F 'br.com.gerentefutebol.entrydemo'
+          $ANDROID_HOME/build-tools/35.0.0/apksigner verify "$apk"
+          sha256sum "$apk" | tee scratch/apk.sha256
+          unzip -p "$apk" assets/index.html | grep -qF 'TOQUE PARA COMEÇAR'
+      - run: python3 -m pip install -q websocket-client
+      - name: Prepare emulator smoke
+        run: |
+          cat > smoke.py <<'PY'
+          import json,time,itertools,urllib.request,websocket
+          p=next(x for x in json.load(urllib.request.urlopen('http://localhost:9222/json')) if x.get('type')=='page'); w=websocket.create_connection(p['webSocketDebuggerUrl'],timeout=45,suppress_origin=True); seq=itertools.count(1)
+          def js(e):
+              i=next(seq); w.send(json.dumps({'id':i,'method':'Runtime.evaluate','params':{'expression':e,'returnByValue':True}}))
+              while 1:
+                  r=json.loads(w.recv())
+                  if r.get('id')==i:
+                      if r.get('result',{}).get('exceptionDetails'): raise Exception(r['result']['exceptionDetails'])
+                      return r['result']['result'].get('value')
+          def ck(e,n):
+              v=js(e); print(('PASS' if v else 'FAIL'),n,flush=True)
+              if not v: raise AssertionError(n)
+          def wait(e,n):
+              for _ in range(100):
+                  if js(e): print('PASS',n,flush=True); return
+                  time.sleep(.4)
+              raise AssertionError(n)
+          def click(s): ck('!!document.querySelector('+json.dumps(s)+')','control '+s); js('document.querySelector('+json.dumps(s)+').click()'); time.sleep(.5)
+          wait("document.querySelector('#moOpening img')&&document.querySelector('#m11Continue')",'app initial page opens')
+          ck("!!document.querySelector('#m11Continue')&&document.querySelector('#m11Continue').textContent.includes('TOQUE PARA COMEÇAR')",'entry start button exists')
+          ck("!!document.querySelector('#moOpening img')&&getComputedStyle(document.querySelector('#moOpening')).display!=='none'",'entry art is displayed')
+          ck("JSON.parse(localStorage.getItem('gdf-career-slots-v1')||'[]').length===0",'clean test storage')
+          click('#m11Continue'); wait("document.querySelector('#careerHome')&&!document.querySelector('#careerHome').classList.contains('hidden')",'start opens career center')
+          ck("!!document.querySelector('#createCareerBtn')&&!!document.querySelector('#openCareersBtn')",'create and continue career choices are available')
+          click('#createCareerBtn')
+          for s in ['#cwCountryNext','#cwDivisionNext','#start']: click(s)
+          wait("!document.querySelector('#app').classList.contains('hidden')",'new career starts')
+          ck("JSON.parse(localStorage.getItem('gdf-career-slots-v1')||'[]').length===1",'career successfully saved')
+          print('PASS Android 10 entry-screen and new-career smoke',flush=True)
+          PY
+      - name: Enable KVM for emulator
+        run: echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules && sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+      - name: Android 10 emulator smoke
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          target: default
+          arch: x86
+          profile: pixel_2
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            bash -c 'set -e; adb install android/app/build/outputs/apk/debug/app-debug.apk; adb logcat -c; adb shell am start -W -n br.com.gerentefutebol.entrydemo/br.com.gerentefutebol.MainActivity; sleep 18; adb forward tcp:9222 localabstract:webview_devtools_remote_$(adb shell pidof br.com.gerentefutebol.entrydemo | tr -d "\r"); python3 smoke.py; adb shell screencap -p /sdcard/qa.png; adb pull /sdcard/qa.png scratch/android10.png; adb logcat -d -s AndroidRuntime:E M11QA:I chromium:E > scratch/logcat.txt; ! grep -E "FATAL EXCEPTION|Uncaught (SyntaxError|ReferenceError|TypeError)" scratch/logcat.txt'
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mestre11-entry-android10-qa-${{ github.run_number }}
+          path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            scratch/*
+            smoke.py
+          retention-days: 7
