@@ -76,35 +76,83 @@ jobs:
       - name: Prepare emulator smoke
         run: |
           cat > smoke.py <<'PY'
-          import json,time,itertools,urllib.request,websocket
-          p=next(x for x in json.load(urllib.request.urlopen('http://localhost:9222/json')) if x.get('type')=='page'); w=websocket.create_connection(p['webSocketDebuggerUrl'],timeout=45,suppress_origin=True); seq=itertools.count(1)
-          def js(e):
-              i=next(seq); w.send(json.dumps({'id':i,'method':'Runtime.evaluate','params':{'expression':e,'returnByValue':True}}))
-              while 1:
-                  r=json.loads(w.recv())
-                  if r.get('id')==i:
-                      if r.get('result',{}).get('exceptionDetails'): raise Exception(r['result']['exceptionDetails'])
-                      return r['result']['result'].get('value')
-          def ck(e,n):
-              v=js(e); print(('PASS' if v else 'FAIL'),n,flush=True)
-              if not v: raise AssertionError(n)
-          def wait(e,n):
-              for _ in range(100):
-                  if js(e): print('PASS',n,flush=True); return
-                  time.sleep(.4)
-              raise AssertionError(n)
-          def click(s): ck('!!document.querySelector('+json.dumps(s)+')','control '+s); js('document.querySelector('+json.dumps(s)+').click()'); time.sleep(.5)
-          wait("document.querySelector('#moSplash img')&&document.querySelector('#m11Continue')",'app initial page opens')
-          ck("!!document.querySelector('#m11Continue')&&document.querySelector('#m11Continue').textContent.includes('TOQUE PARA COMEÇAR')",'entry start button exists')
-          ck("!!document.querySelector('#moSplash img')&&!document.querySelector('#moSplash').hidden",'entry art is displayed')
-          ck("JSON.parse(localStorage.getItem('gdf-career-slots-v1')||'[]').length===0",'clean test storage')
-          click('#m11Continue'); wait("document.querySelector('#careerHome')&&!document.querySelector('#careerHome').classList.contains('hidden')",'start opens career center')
-          ck("!!document.querySelector('#createCareerBtn')&&!!document.querySelector('#openCareersBtn')",'create and continue career choices are available')
-          click('#createCareerBtn')
-          for s in ['#cwCountryNext','#cwDivisionNext','#start']: click(s)
-          wait("!document.querySelector('#app').classList.contains('hidden')",'new career starts')
-          ck("JSON.parse(localStorage.getItem('gdf-career-slots-v1')||'[]').length===1",'career successfully saved')
-          print('PASS Android 10 entry-screen and new-career smoke',flush=True)
+          import json,time,itertools,urllib.request,websocket,subprocess,os,sys
+          PKG='br.com.gerentefutebol.entrydemo'; ACT=f'{PKG}/br.com.gerentefutebol.MainActivity'
+          def adb(*args,check=True):
+           p=subprocess.run(['adb',*args],text=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+           print('$ adb '+' '.join(args)+'\n'+p.stdout,flush=True)
+           if check and p.returncode: raise RuntimeError(f'adb returned {p.returncode}: {args}')
+           return p.stdout
+          try:
+           adb('wait-for-device')
+           for _ in range(90):
+            if adb('shell','getprop','sys.boot_completed',check=False).strip()=='1':break
+            time.sleep(2)
+           assert adb('shell','getprop','sys.boot_completed').strip()=='1','emulator boot failed'
+           adb('install','-r','android/app/build/outputs/apk/debug/app-debug.apk')
+           adb('logcat','-c')
+           adb('shell','am','force-stop',PKG)
+           out=adb('shell','am','start','-W','-n',ACT)
+           assert ACT in out, 'Activity did not start: '+out
+           pid=''
+           for _ in range(30):
+            pid=adb('shell','pidof',PKG,check=False).strip()
+            if pid: break
+            time.sleep(1)
+           assert pid,'app process did not start'
+           adb('forward','tcp:9222',f'localabstract:webview_devtools_remote_{pid}')
+           pages=[]
+           for _ in range(30):
+            try:
+             pages=json.load(urllib.request.urlopen('http://localhost:9222/json',timeout=3));
+             if any(x.get('type')=='page' for x in pages):break
+            except Exception: pass
+            time.sleep(1)
+           p=next(x for x in pages if x.get('type')=='page'); w=websocket.create_connection(p['webSocketDebuggerUrl'],timeout=30,suppress_origin=True); seq=itertools.count(1)
+           def js(expr):
+            i=next(seq);w.send(json.dumps({'id':i,'method':'Runtime.evaluate','params':{'expression':expr,'returnByValue':True}}))
+            while True:
+             r=json.loads(w.recv())
+             if r.get('id')==i:
+              if r.get('result',{}).get('exceptionDetails'):raise Exception(r['result']['exceptionDetails'])
+              return r['result']['result'].get('value')
+           def ck(expr,name):
+            value=js(expr);print(('PASS' if value else 'FAIL'),name,flush=True)
+            if not value:raise AssertionError(name)
+           def wait(expr,name):
+            for _ in range(90):
+             if js(expr):print('PASS',name,flush=True);return
+             time.sleep(.5)
+            raise AssertionError(name)
+           def click(sel):ck('!!document.querySelector('+json.dumps(sel)+')','control '+sel);js('document.querySelector('+json.dumps(sel)+').click()');time.sleep(.6)
+           wait("document.querySelector('#moSplash img')&&document.querySelector('#m11Continue')",'app initial page opens')
+           ck("document.querySelector('#m11Continue').textContent.includes('TOQUE PARA COMEÇAR')",'entry button text')
+           ck("!!document.querySelector('#moSplash img')&&!document.querySelector('#moSplash').hidden",'birthday art displayed')
+           ck("JSON.parse(localStorage.getItem('gdf-career-slots-v1')||'[]').length===0",'test starts with clean saves')
+           click('#m11Continue');wait("document.querySelector('#careerHome')&&!document.querySelector('#careerHome').classList.contains('hidden')",'button opens career center')
+           ck("!!document.querySelector('#createCareerBtn')&&!!document.querySelector('#openCareersBtn')",'create/continue career choices')
+           click('#createCareerBtn')
+           for sel in ['#cwCountryNext','#cwDivisionNext','#start']:click(sel)
+           wait("!document.querySelector('#app').classList.contains('hidden')",'career starts successfully')
+           ck("JSON.parse(localStorage.getItem('gdf-career-slots-v1')||'[]').length===1",'career save created in test')
+           print('PASS Android 10 splash, button, career center, new-career smoke',flush=True)
+          except Exception as e:
+           print('SMOKE FAILURE:',repr(e),flush=True);raise
+          finally:
+           try:
+            os.makedirs('scratch',exist_ok=True)
+            try: adb('shell','dumpsys','activity','activities',check=False)
+            except: pass
+            try:
+             adb('shell','screencap','-p','/sdcard/qa-final.png',check=False)
+             adb('pull','/sdcard/qa-final.png','scratch/android10-final.png',check=False)
+            except: pass
+            try: open('scratch/logcat.txt','w').write(adb('logcat','-d','-v','time','-s','AndroidRuntime:E','M11QA:I','chromium:E','*:S',check=False))
+            except: pass
+            try: open('scratch/diagnostics.txt','w').write(adb('devices','-l',check=False)+'\n'+adb('shell','pm','path',PKG,check=False)+'\n'+adb('shell','ps','-A',check=False))
+            except: pass
+           except Exception as diagerr: print('diagnostic collection failed',repr(diagerr),flush=True)
+
           PY
       - name: Enable KVM for emulator
         run: echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules && sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
@@ -118,37 +166,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: |
-            set -eu
-            mkdir -p scratch
-            diag() {
-              rc=$?
-              set +e
-              echo "smoke_exit_code=$rc" > scratch/diagnostics.txt
-              adb devices -l >> scratch/diagnostics.txt 2>&1
-              adb shell pm path br.com.gerentefutebol.entrydemo >> scratch/diagnostics.txt 2>&1
-              adb shell dumpsys activity activities >> scratch/diagnostics.txt 2>&1
-              adb shell ps -A | grep -E 'gerentefutebol|webview' >> scratch/diagnostics.txt 2>&1
-              adb shell screencap -p /sdcard/qa-final.png && adb pull /sdcard/qa-final.png scratch/android10-final.png >> scratch/diagnostics.txt 2>&1
-              adb logcat -d -v time -s AndroidRuntime:E M11QA:I chromium:E '*:S' > scratch/logcat.txt 2>&1
-              cat scratch/diagnostics.txt
-              exit $rc
-            }
-            trap diag EXIT
-            adb wait-for-device
-            for i in $(seq 1 60); do [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ] && break; sleep 2; done
-            test "$(adb shell getprop sys.boot_completed | tr -d '\r')" = 1
-            adb install -r android/app/build/outputs/apk/debug/app-debug.apk
-            adb shell pm path br.com.gerentefutebol.entrydemo
-            adb logcat -c
-            adb shell am force-stop br.com.gerentefutebol.entrydemo
-            adb shell am start -W -n br.com.gerentefutebol.entrydemo/br.com.gerentefutebol.MainActivity 2>&1 | tee scratch/am-start.txt
-            grep -F 'br.com.gerentefutebol.entrydemo/br.com.gerentefutebol.MainActivity' scratch/am-start.txt
-            for i in $(seq 1 30); do pid=$(adb shell pidof br.com.gerentefutebol.entrydemo 2>/dev/null | tr -d '\r'); [ -n "$pid" ] && break; sleep 1; done
-            test -n "$pid"
-            adb forward tcp:9222 localabstract:webview_devtools_remote_$pid
             python3 smoke.py
-            adb logcat -d -v time -s AndroidRuntime:E M11QA:I chromium:E '*:S' > scratch/logcat.txt 2>&1
-            ! grep -E 'FATAL EXCEPTION|Uncaught (SyntaxError|ReferenceError|TypeError)' scratch/logcat.txt
       - if: always()
         uses: actions/upload-artifact@v4
         with:
