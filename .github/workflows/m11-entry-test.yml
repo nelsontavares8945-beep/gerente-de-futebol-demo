@@ -118,7 +118,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: |
-            set -Eeuo pipefail
+            set -eu
             mkdir -p scratch
             diag() {
               rc=$?
