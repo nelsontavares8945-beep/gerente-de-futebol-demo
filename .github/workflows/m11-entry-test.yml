@@ -1,4 +1,4 @@
-name: Android 10 - Mestre 11 entry-screen QA
+name: Android 10 - Mestre 11 redesign preview QA
 on:
   workflow_dispatch:
 permissions:
@@ -9,19 +9,26 @@ jobs:
     timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: mestre11-tela-inicial-qa-2026-11-17
-      - name: Verify candidate and prepare app
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - name: Prepare standalone app assets
         run: |
           set -eu
-          test "$(sha256sum mestre11-tela-inicial-candidata.html | cut -d' ' -f1)" = 9daf606c70523577939532ae16126a7c38565d514b6c7c2f93f6fa7f86a6c426
-          mkdir -p android/app/src/main/assets android/app/src/main/java/br/com/gerentefutebol android/app/src/main/res/drawable scratch
-          cp mestre11-tela-inicial-candidata.html android/app/src/main/assets/index.html
-          cp icon-192.png android/app/src/main/res/drawable/icon.png
-          echo 'candidate sha256 9daf606c70523577939532ae16126a7c38565d514b6c7c2f93f6fa7f86a6c426' > scratch/provenance.txt
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+          mkdir -p android/app/src/main/assets android/app/src/main/java/br/com/gerentefutebol/redesignpreview android/app/src/main/res/drawable scratch
+          cp mestre11-redesign-preview.html android/app/src/main/assets/index.html
+          cp media/mestre11-icon-v2-192.png android/app/src/main/res/drawable/icon.png
+          python3 - <<'PY'
+          import pathlib,re
+          p=pathlib.Path('android/app/src/main/assets/index.html'); h=p.read_text()
+          h=h.replace('/mestre11-icon-192.png?v=2','mestre11-icon-192.png').replace('/gerente-de-futebol-demo/icon-192.png','mestre11-icon-192.png').replace('/gerente-de-futebol-demo/manifest.webmanifest','mestre11.webmanifest')
+          h=re.sub(r'<link[^>]+rel=["\']manifest["\'][^>]*>', '', h, flags=re.I)
+          start=h.find('<div id="moOpening"'); end=h.find('<header class="top"', start)
+          if start>=0 and end>start: h=h[:start]+h[end:]
+          h=re.sub(r'function mestreOnzeBoot\(\)\{.*?mestreOnzeBoot\(\);', '', h, flags=re.S)
+          h=h.replace('</head>','<link rel="icon" href="mestre11-icon-192.png"></head>')
+          p.write_text(h)
+          pathlib.Path('android/app/src/main/assets/mestre11-icon-192.png').write_bytes(pathlib.Path('media/mestre11-icon-v2-192.png').read_bytes())
+          PY
       - name: Transpile inline JavaScript for Android 10 WebView
         run: |
           npm install --no-save esbuild@0.25.0
@@ -39,129 +46,40 @@ jobs:
           pathlib.Path('scratch/transpiled.sha256').write_text(hashlib.sha256(h.encode()).hexdigest()+'\n'); print('transpiled inline scripts:',n)
           PY
       - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
+        with: {distribution: temurin, java-version: '17'}
       - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.10.2'
-      - name: Build isolated debug test app
+        with: {gradle-version: '8.10.2'}
+      - name: Build isolated debug APK
         run: |
-          set -eu
           cat > android/settings.gradle <<'GRADLE'
           pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
           dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
-          rootProject.name='M11QA'; include ':app'
+          rootProject.name='Mestre11RedesignPreview'; include ':app'
           GRADLE
           echo "plugins { id 'com.android.application' version '8.6.1' apply false }" > android/build.gradle
           cat > android/app/build.gradle <<'GRADLE'
           plugins { id 'com.android.application' }
-          android { namespace 'br.com.gerentefutebol'; compileSdk 35; defaultConfig { applicationId 'br.com.gerentefutebol.entrydemo'; minSdk 23; targetSdk 28; versionCode 64; versionName 'entry-screen-qa' } }
+          android { namespace 'br.com.gerentefutebol.redesignpreview'; compileSdk 35; defaultConfig { applicationId 'br.com.gerentefutebol.redesignpreview'; minSdk 23; targetSdk 28; versionCode 1; versionName 'redesign-preview-1' } }
           GRADLE
           cat > android/app/src/main/AndroidManifest.xml <<'XML'
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android"><uses-permission android:name="android.permission.INTERNET"/><application android:label="Mestre 11 QA" android:icon="@drawable/icon" android:theme="@android:style/Theme.Material.NoActionBar" android:hardwareAccelerated="true" android:allowBackup="false"><activity android:name="br.com.gerentefutebol.MainActivity" android:exported="true" android:screenOrientation="landscape"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity></application></manifest>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android"><uses-permission android:name="android.permission.INTERNET"/><application android:label="Mestre 11 Prévia" android:icon="@drawable/icon" android:theme="@android:style/Theme.Material.NoActionBar" android:hardwareAccelerated="true" android:allowBackup="false"><activity android:name="br.com.gerentefutebol.redesignpreview.MainActivity" android:exported="true" android:screenOrientation="landscape"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity></application></manifest>
           XML
-          cat > android/app/src/main/java/br/com/gerentefutebol/MainActivity.java <<'JAVA'
-          package br.com.gerentefutebol;
-          import android.app.*;import android.os.*;import android.webkit.*;import android.view.*;
-          public class MainActivity extends Activity { public void onCreate(Bundle b){super.onCreate(b);getWindow().getDecorView().setSystemUiVisibility(5894);WebView w=new WebView(this);w.getSettings().setJavaScriptEnabled(true);w.getSettings().setDomStorageEnabled(true);w.setLayerType(View.LAYER_TYPE_HARDWARE,null);WebView.setWebContentsDebuggingEnabled(true);w.setWebChromeClient(new WebChromeClient(){public boolean onConsoleMessage(ConsoleMessage m){android.util.Log.i("M11QA",m.message());return true;}});w.setWebViewClient(new WebViewClient(){public WebResourceResponse shouldInterceptRequest(WebView v,WebResourceRequest r){if("game.gerentefutebol.local".equals(r.getUrl().getHost()))try{return new WebResourceResponse("text/html","UTF-8",getAssets().open("index.html"));}catch(Exception e){android.util.Log.e("M11QA","asset intercept",e);}return super.shouldInterceptRequest(v,r);}});setContentView(w);w.loadUrl("https://game.gerentefutebol.local/index.html");} }
+          cat > android/app/src/main/java/br/com/gerentefutebol/redesignpreview/MainActivity.java <<'JAVA'
+          package br.com.gerentefutebol.redesignpreview;
+          import android.app.*;import android.os.*;import android.webkit.*;import android.view.*;import java.io.*;
+          public class MainActivity extends Activity {
+            public void onCreate(Bundle b){super.onCreate(b);getWindow().getDecorView().setSystemUiVisibility(5894);WebView w=new WebView(this);WebSettings s=w.getSettings();s.setJavaScriptEnabled(true);s.setDomStorageEnabled(true);s.setAllowFileAccess(true);s.setAllowContentAccess(false);s.setAllowFileAccessFromFileURLs(false);s.setAllowUniversalAccessFromFileURLs(false);s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);w.setLayerType(View.LAYER_TYPE_HARDWARE,null);WebView.setWebContentsDebuggingEnabled(true);w.setWebChromeClient(new WebChromeClient(){public boolean onConsoleMessage(ConsoleMessage m){android.util.Log.i("M11Preview",m.message()+" ["+m.lineNumber()+"]");return false;}});w.setWebViewClient(new WebViewClient(){public boolean shouldOverrideUrlLoading(WebView v,String u){return !(u.startsWith("file:///android_asset/")||u.startsWith("https://"));}public boolean shouldOverrideUrlLoading(WebView v,WebResourceRequest r){String u=r.getUrl().toString();return !(u.startsWith("file:///android_asset/")||u.startsWith("https://"));}});setContentView(w);w.loadUrl("file:///android_asset/index.html");}
+          }
           JAVA
           gradle -p android --no-daemon assembleDebug
           apk=android/app/build/outputs/apk/debug/app-debug.apk; test -s "$apk"
-          $ANDROID_HOME/build-tools/35.0.0/aapt dump badging "$apk" | grep -F 'br.com.gerentefutebol.entrydemo'
+          $ANDROID_HOME/build-tools/35.0.0/aapt dump badging "$apk" | grep -F 'br.com.gerentefutebol.redesignpreview'
+          $ANDROID_HOME/build-tools/35.0.0/aapt dump badging "$apk" | grep -F "Mestre 11 Prévia"
           $ANDROID_HOME/build-tools/35.0.0/apksigner verify "$apk"
           sha256sum "$apk" | tee scratch/apk.sha256
           unzip -p "$apk" assets/index.html | grep -qF 'TOQUE PARA COMEÇAR'
       - run: python3 -m pip install -q websocket-client
-      - name: Prepare emulator smoke
-        run: |
-          cat > smoke.py <<'PY'
-          import json,time,itertools,urllib.request,websocket,subprocess,os,sys
-          PKG='br.com.gerentefutebol.entrydemo'; ACT=f'{PKG}/br.com.gerentefutebol.MainActivity'
-          def adb(*args,check=True):
-           p=subprocess.run(['adb',*args],text=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
-           print('$ adb '+' '.join(args)+'\n'+p.stdout,flush=True)
-           if check and p.returncode: raise RuntimeError(f'adb returned {p.returncode}: {args}')
-           return p.stdout
-          try:
-           adb('wait-for-device')
-           for _ in range(90):
-            if adb('shell','getprop','sys.boot_completed',check=False).strip()=='1':break
-            time.sleep(2)
-           assert adb('shell','getprop','sys.boot_completed').strip()=='1','emulator boot failed'
-           adb('install','-r','android/app/build/outputs/apk/debug/app-debug.apk')
-           adb('logcat','-c')
-           adb('shell','am','force-stop',PKG)
-           out=adb('shell','am','start','-W','-n',ACT)
-           assert ACT in out, 'Activity did not start: '+out
-           pid=''
-           for _ in range(30):
-            pid=adb('shell','pidof',PKG,check=False).strip()
-            if pid: break
-            time.sleep(1)
-           assert pid,'app process did not start'
-           adb('forward','tcp:9222',f'localabstract:webview_devtools_remote_{pid}')
-           pages=[]
-           for _ in range(30):
-            try:
-             pages=json.load(urllib.request.urlopen('http://localhost:9222/json',timeout=3));
-             if any(x.get('type')=='page' for x in pages):break
-            except Exception: pass
-            time.sleep(1)
-           p=next(x for x in pages if x.get('type')=='page'); w=websocket.create_connection(p['webSocketDebuggerUrl'],timeout=30,suppress_origin=True); seq=itertools.count(1)
-           # Dismiss Android 10's one-time immersive-mode prompt before UI evidence.
-           adb('shell','input','tap','1200','520',check=False); time.sleep(1)
-           def js(expr):
-            i=next(seq);w.send(json.dumps({'id':i,'method':'Runtime.evaluate','params':{'expression':expr,'returnByValue':True}}))
-            while True:
-             r=json.loads(w.recv())
-             if r.get('id')==i:
-              if r.get('result',{}).get('exceptionDetails'):raise Exception(r['result']['exceptionDetails'])
-              return r['result']['result'].get('value')
-           # Dismiss Android 10's one-time immersive-mode prompt before taking UI evidence.
-           adb('shell','input','tap','1200','520',check=False); time.sleep(1)
-           def ck(expr,name):
-            value=js(expr);print(('PASS' if value else 'FAIL'),name,flush=True)
-            if not value:raise AssertionError(name)
-           def wait(expr,name):
-            for _ in range(90):
-             if js(expr):print('PASS',name,flush=True);return
-             time.sleep(.5)
-            raise AssertionError(name)
-           def click(sel):ck('!!document.querySelector('+json.dumps(sel)+')','control '+sel);js('document.querySelector('+json.dumps(sel)+').click()');time.sleep(.6)
-           print('INITIAL DOM:',js("JSON.stringify({title:document.title,orientation:screen.orientation&&screen.orientation.type,inner:[innerWidth,innerHeight],opening:(()=>{let e=document.querySelector('#moOpening'),r=e.getBoundingClientRect(),c=getComputedStyle(e);return {hidden:e.hidden,display:c.display,position:c.position,transform:c.transform,rect:[r.x,r.y,r.width,r.height],z:c.zIndex}})(),splash:(()=>{let e=document.querySelector('#moSplash'),r=e.getBoundingClientRect(),c=getComputedStyle(e);return {hidden:e.hidden,display:c.display,rect:[r.x,r.y,r.width,r.height]}})(),button:!!document.querySelector('#m11Continue')})"),flush=True)
-           wait("!!document.querySelector('#moSplash img')&&!!document.querySelector('#m11Continue')",'app initial page opens')
-           ck("document.querySelector('#m11Continue').textContent.includes('TOQUE PARA COMEÇAR')",'entry button text')
-           ck("!!document.querySelector('#moSplash img')&&!document.querySelector('#moSplash').hidden",'birthday art displayed')
-           ck("JSON.parse(localStorage.getItem('gdf-career-slots-v1')||'[]').length===0",'test starts with clean saves')
-           click('#m11Continue');wait("document.querySelector('#careerHome')&&!document.querySelector('#careerHome').classList.contains('hidden')",'button opens career center')
-           ck("!!document.querySelector('#createCareerBtn')&&!!document.querySelector('#openCareersBtn')",'create/continue career choices')
-           click('#createCareerBtn')
-           for sel in ['#cwCountryNext','#cwDivisionNext','#start']:click(sel)
-           wait("!document.querySelector('#app').classList.contains('hidden')",'career starts successfully')
-           ck("JSON.parse(localStorage.getItem('gdf-career-slots-v1')||'[]').length===1",'career save created in test')
-           print('PASS Android 10 splash, button, career center, new-career smoke',flush=True)
-          except Exception as e:
-           print('SMOKE FAILURE:',repr(e),flush=True);raise
-          finally:
-           try:
-            os.makedirs('scratch',exist_ok=True)
-            try: adb('shell','dumpsys','activity','activities',check=False)
-            except: pass
-            try:
-             adb('shell','screencap','-p','/sdcard/qa-final.png',check=False)
-             adb('pull','/sdcard/qa-final.png','scratch/android10-final.png',check=False)
-            except: pass
-            try: open('scratch/logcat.txt','w').write(adb('logcat','-d','-v','time','-s','AndroidRuntime:E','M11QA:I','chromium:E','*:S',check=False))
-            except: pass
-            try: open('scratch/diagnostics.txt','w').write(adb('devices','-l',check=False)+'\n'+adb('shell','pm','path',PKG,check=False)+'\n'+adb('shell','ps','-A',check=False))
-            except: pass
-           except Exception as diagerr: print('diagnostic collection failed',repr(diagerr),flush=True)
-
-          PY
-      - name: Enable KVM for emulator
-        run: echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules && sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
-      - name: Android 10 emulator smoke
+      - name: Android 10 emulator QA
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 29
@@ -170,12 +88,11 @@ jobs:
           profile: pixel_2
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          script: |
-            python3 smoke.py
+          script: python3 smoke.py
       - if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: mestre11-entry-android10-qa-${{ github.run_number }}
+          name: mestre11-redesign-preview-android10-${{ github.run_number }}
           path: |
             android/app/build/outputs/apk/debug/app-debug.apk
             scratch/*
