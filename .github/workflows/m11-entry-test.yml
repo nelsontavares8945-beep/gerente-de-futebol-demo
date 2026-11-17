@@ -14,11 +14,11 @@ jobs:
       - name: Verify candidate and prepare app
         run: |
           set -eu
-          test "$(sha256sum mestre11-tela-inicial-candidata.html | cut -d' ' -f1)" = 2f4c818d442a12bf0c4b570516e7a965ff003a18ae316fde2b554fe46bdc021f
+          test "$(sha256sum mestre11-tela-inicial-candidata.html | cut -d' ' -f1)" = 9daf606c70523577939532ae16126a7c38565d514b6c7c2f93f6fa7f86a6c426
           mkdir -p android/app/src/main/assets android/app/src/main/java/br/com/gerentefutebol android/app/src/main/res/drawable scratch
           cp mestre11-tela-inicial-candidata.html android/app/src/main/assets/index.html
           cp icon-192.png android/app/src/main/res/drawable/icon.png
-          echo 'candidate sha256 2f4c818d442a12bf0c4b570516e7a965ff003a18ae316fde2b554fe46bdc021f' > scratch/provenance.txt
+          echo 'candidate sha256 9daf606c70523577939532ae16126a7c38565d514b6c7c2f93f6fa7f86a6c426' > scratch/provenance.txt
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
