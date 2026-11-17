@@ -77,7 +77,7 @@ jobs:
           $ANDROID_HOME/build-tools/35.0.0/aapt dump badging "$apk" | grep -F "Mestre 11 Prévia"
           $ANDROID_HOME/build-tools/35.0.0/apksigner verify "$apk"
           sha256sum "$apk" | tee scratch/apk.sha256
-          unzip -p "$apk" assets/index.html | grep -qF 'TOQUE PARA COMEÇAR'
+          unzip -p "$apk" assets/index.html | grep -qF 'Criar carreira'
       - run: python3 -m pip install -q websocket-client
       - name: Android 10 emulator QA
         uses: reactivecircus/android-emulator-runner@v2
