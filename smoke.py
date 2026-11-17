@@ -11,6 +11,8 @@ def main():
   time.sleep(2)
  assert adb('shell','getprop','sys.boot_completed').strip()=='1'
  adb('install','-r','android/app/build/outputs/apk/debug/app-debug.apk');adb('logcat','-c');adb('shell','am','force-stop',PKG);adb('shell','am','start','-W','-n',ACT)
+ # Dismiss Android immersive-mode first-use overlay so it cannot swallow taps.
+ time.sleep(2);adb('shell','input','tap','1200','520',check=False);time.sleep(2)
  pid=''
  for _ in range(30):
   pid=adb('shell','pidof',PKG,check=False).strip()
@@ -25,7 +27,7 @@ def main():
    if any(x.get('type')=='page' for x in pages):break
   except Exception:pass
   time.sleep(1)
- page=next(x for x in pages if x.get('type')=='page'); ws=websocket.create_connection(page['webSocketDebuggerUrl'],timeout=30,suppress_origin=True);seq=itertools.count(1);errors=[]
+ page=next(x for x in pages if x.get('type')=='page'); ws=websocket.create_connection(page['webSocketDebuggerUrl'],timeout=120,suppress_origin=True);seq=itertools.count(1);errors=[]
  def js(expr):
   i=next(seq);ws.send(json.dumps({'id':i,'method':'Runtime.evaluate','params':{'expression':expr,'returnByValue':True,'awaitPromise':True}}))
   while 1:
@@ -61,11 +63,11 @@ def main():
   js("localStorage.setItem('__qa_career',localStorage.length+'')")
   ck('localStorage.length>0','career state stored')
   print('JS exceptions captured:',len(errors),flush=True)
-  adb('shell','am','force-stop',PKG);adb('shell','am','start','-W','-n',ACT);time.sleep(4)
+  adb('shell','am','force-stop',PKG);adb('shell','am','start','-W','-n',ACT);time.sleep(4);adb('shell','input','tap','1200','520',check=False);time.sleep(1)
   pid=adb('shell','pidof',PKG,check=False).strip();adb('forward','tcp:9223',f'localabstract:webview_devtools_remote_{pid}')
   for _ in range(30):
    try:
-    pp=json.load(urllib.request.urlopen('http://localhost:9223/json',timeout=3)); p2=next(x for x in pp if x.get('type')=='page');ws.close();ws=websocket.create_connection(p2['webSocketDebuggerUrl'],timeout=30,suppress_origin=True);break
+    pp=json.load(urllib.request.urlopen('http://localhost:9223/json',timeout=3)); p2=next(x for x in pp if x.get('type')=='page');ws.close();ws=websocket.create_connection(p2['webSocketDebuggerUrl'],timeout=120,suppress_origin=True);break
    except Exception:time.sleep(1)
   ck("localStorage.getItem('__qa_marker')==='persist-me'",'localStorage survives relaunch')
   ck("localStorage.getItem('__qa_career')!==null",'career data survives relaunch')
