@@ -130,7 +130,7 @@ jobs:
             raise AssertionError(name)
            def click(sel):ck('!!document.querySelector('+json.dumps(sel)+')','control '+sel);js('document.querySelector('+json.dumps(sel)+').click()');time.sleep(.6)
            print('INITIAL DOM:',js("JSON.stringify({title:document.title,orientation:screen.orientation&&screen.orientation.type,inner:[innerWidth,innerHeight],opening:(()=>{let e=document.querySelector('#moOpening'),r=e.getBoundingClientRect(),c=getComputedStyle(e);return {hidden:e.hidden,display:c.display,position:c.position,transform:c.transform,rect:[r.x,r.y,r.width,r.height],z:c.zIndex}})(),splash:(()=>{let e=document.querySelector('#moSplash'),r=e.getBoundingClientRect(),c=getComputedStyle(e);return {hidden:e.hidden,display:c.display,rect:[r.x,r.y,r.width,r.height]}})(),button:!!document.querySelector('#m11Continue')})"),flush=True)
-           wait("document.querySelector('#moSplash img')&&document.querySelector('#m11Continue')",'app initial page opens')
+           wait("!!document.querySelector('#moSplash img')&&!!document.querySelector('#m11Continue')",'app initial page opens')
            ck("document.querySelector('#m11Continue').textContent.includes('TOQUE PARA COMEÇAR')",'entry button text')
            ck("!!document.querySelector('#moSplash img')&&!document.querySelector('#moSplash').hidden",'birthday art displayed')
            ck("JSON.parse(localStorage.getItem('gdf-career-slots-v1')||'[]').length===0",'test starts with clean saves')
