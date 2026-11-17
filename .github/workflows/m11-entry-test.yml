@@ -109,6 +109,8 @@ jobs:
             except Exception: pass
             time.sleep(1)
            p=next(x for x in pages if x.get('type')=='page'); w=websocket.create_connection(p['webSocketDebuggerUrl'],timeout=30,suppress_origin=True); seq=itertools.count(1)
+           # Dismiss Android 10's one-time immersive-mode prompt before UI evidence.
+           adb('shell','input','tap','1200','520',check=False); time.sleep(1)
            def js(expr):
             i=next(seq);w.send(json.dumps({'id':i,'method':'Runtime.evaluate','params':{'expression':expr,'returnByValue':True}}))
             while True:
@@ -116,6 +118,8 @@ jobs:
              if r.get('id')==i:
               if r.get('result',{}).get('exceptionDetails'):raise Exception(r['result']['exceptionDetails'])
               return r['result']['result'].get('value')
+           # Dismiss Android 10's one-time immersive-mode prompt before taking UI evidence.
+           adb('shell','input','tap','1200','520',check=False); time.sleep(1)
            def ck(expr,name):
             value=js(expr);print(('PASS' if value else 'FAIL'),name,flush=True)
             if not value:raise AssertionError(name)
@@ -125,6 +129,7 @@ jobs:
              time.sleep(.5)
             raise AssertionError(name)
            def click(sel):ck('!!document.querySelector('+json.dumps(sel)+')','control '+sel);js('document.querySelector('+json.dumps(sel)+').click()');time.sleep(.6)
+           print('INITIAL DOM:',js("JSON.stringify({title:document.title,orientation:screen.orientation&&screen.orientation.type,inner:[innerWidth,innerHeight],opening:(()=>{let e=document.querySelector('#moOpening'),r=e.getBoundingClientRect(),c=getComputedStyle(e);return {hidden:e.hidden,display:c.display,position:c.position,transform:c.transform,rect:[r.x,r.y,r.width,r.height],z:c.zIndex}})(),splash:(()=>{let e=document.querySelector('#moSplash'),r=e.getBoundingClientRect(),c=getComputedStyle(e);return {hidden:e.hidden,display:c.display,rect:[r.x,r.y,r.width,r.height]}})(),button:!!document.querySelector('#m11Continue')})"),flush=True)
            wait("document.querySelector('#moSplash img')&&document.querySelector('#m11Continue')",'app initial page opens')
            ck("document.querySelector('#m11Continue').textContent.includes('TOQUE PARA COMEÇAR')",'entry button text')
            ck("!!document.querySelector('#moSplash img')&&!document.querySelector('#moSplash').hidden",'birthday art displayed')
