@@ -917,7 +917,7 @@ function mcMatchReady(){return mcNextEvent().key!=='done'}
 
 function mcDaysToMatch(){return Math.max(0,3-(Number(S.matchTrainingDays)||0))}
 
-function mcAdvanceDay(){if(S.dayMatchPlayed){S.dayMatchPlayed=false;S.calendarDay=mcDaily()+1;S.training=null;save();return}if(mcMatchReady()){alert('Dia de jogo: conclua a partida antes de avançar o calendário.');return}if(S.trainingDay!==mcDaily()){alert('Treine o time hoje antes de avançar.');window.currentTab='Treino';render();return}S.calendarDay=mcDaily()+1;S.training=null;save()}
+function mcAdvanceDay(){S.calendarDay=mcDaily()+1;S.training=null;S.trainingDay=null;save()}
 
 function mcTournamentCard(k,t){let status=t.locked?'Classificação aberta após a liga':t.champion?'Campeão: '+t.champion:t.eliminated?'Eliminado':`Fase ${t.round+1} • ${t.field.length} clubes`;let history=(t.history||[]).flatMap(x=>x.results||[]).slice(-12).map(x=>`<li>${esc(x)}</li>`).join('');let disabled=t.locked||t.champion||t.eliminated;return `<article class="card" style="margin:10px 0;padding:14px"><h3>${esc(t.label)}</h3><p>${esc(status)}</p><p><small>Regra simplificada de gameplay: mata-mata em jogos únicos entre clubes do catálogo selecionado; não representa regulamento/campo oficial nem vagas continentais.</small></p><button class="btn primary" data-play-season-tournament="${k}" ${disabled?'disabled':''}>${t.locked?'Aguardando liga':t.champion||t.eliminated?'Encerrado':'Ver resultados da próxima fase'}</button><ul>${history}</ul></article>`}
 function mcAdvanceDivision(){return 'Acesso/rebaixamento desativado nesta versão: regras específicas não validadas; '+S.club+' permanece em '+S.division+'.'}
