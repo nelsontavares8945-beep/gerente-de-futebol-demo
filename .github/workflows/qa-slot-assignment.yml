@@ -1,0 +1,28 @@
+name: QA — lineup slot assignment (read-only)
+run-name: QA slot assignment #${{ github.run_number }}
+on:
+  workflow_dispatch:
+    inputs:
+      branch_note:
+        description: 'Manual validation only; does not publish a release'
+        required: false
+        default: 'slot-assignment'
+permissions:
+  contents: read
+jobs:
+  logic-and-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature-slot-assignment-2026-11-15
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install isolated browser QA runtime
+        run: npm install --no-save playwright@1.56.1
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run slot assignment smoke
+        run: node smoke-slot-assignment.mjs
